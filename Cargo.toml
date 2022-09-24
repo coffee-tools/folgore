@@ -1,0 +1,6 @@
+[workspace]
+members = [
+        "future_client",
+        "plugin",
+]
+resolver = "2"
