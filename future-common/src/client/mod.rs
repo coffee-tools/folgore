@@ -1,5 +1,7 @@
 //! Future client interface definition.
 use clightningrpc_plugin::plugin::Plugin;
+use serde_json::Value;
+use std::collections::HashMap;
 
 /// Future backend trait that implement an optional async and sync
 /// interface to work with a cln node that want access to a bitcoin
@@ -7,7 +9,7 @@ use clightningrpc_plugin::plugin::Plugin;
 pub trait FutureBackend<T: Clone> {
     type Error = String;
 
-    fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<(), Self::Error> {
+    fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
         todo!()
     }
 
@@ -15,7 +17,7 @@ pub trait FutureBackend<T: Clone> {
         todo!()
     }
 
-    fn sync_block_by_height(&self, _: &mut Plugin<T>) -> Result<(), Self::Error> {
+    fn sync_block_by_height(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
         todo!()
     }
 

@@ -102,11 +102,8 @@ name = "future-common"
 version = "0.1.0"
 dependencies = [
  "clightningrpc-plugin",
+ "serde_json",
 ]
-
-[[package]]
-name = "future_client"
-version = "0.1.0"
 
 [[package]]
 name = "instant"
@@ -247,11 +244,13 @@ dependencies = [
 name = "nakamoto_cln_client"
 version = "0.1.0"
 dependencies = [
+ "clightningrpc-plugin",
  "future-common",
  "nakamoto-client",
  "nakamoto-common",
  "nakamoto-net-poll",
  "nakamoto-p2p",
+ "serde_json",
 ]
 
 [[package]]
