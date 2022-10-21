@@ -1,6 +1,8 @@
 [workspace]
 members = [
         "future_client",
+        "future-common",
+        "nakamoto_cln_client",
         "plugin",
 ]
 resolver = "2"

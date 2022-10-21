@@ -1,0 +1,12 @@
+[package]
+name = "nakamoto_cln_client"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+nakamoto-client = { version = "0.3.0" }
+nakamoto-net-poll = { version = "0.3.0" }
+nakamoto-p2p = { version = "0.3.0" }
+nakamoto-common = { version = "0.3.0" }
+future-common = { path = "../future-common" }
