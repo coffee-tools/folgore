@@ -5,10 +5,11 @@ edition = "2021"
 
 
 [dependencies]
-nakamoto-client = { version = "0.3.0" }
-nakamoto-net-poll = { version = "0.3.0" }
-nakamoto-p2p = { version = "0.3.0" }
-nakamoto-common = { version = "0.3.0" }
+nakamoto-client = { path = "../../nakamoto/client" }
+nakamoto-net-poll = { path = "../../nakamoto/net/poll" }
+nakamoto-p2p = { version = "0.4.0" }
+nakamoto-common = { version = "0.4.0" }
 future-common = { path = "../future-common" }
 clightningrpc-plugin = "0.3.0-beta.5"
+clightningrpc-common = "0.3.0-beta.3"
 serde_json = "1.0"

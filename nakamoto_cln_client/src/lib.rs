@@ -1,17 +1,18 @@
 //! Future client implementation for nakamoto
-use clightningrpc_plugin::commands::json_utils;
+use clightningrpc_common::json_utils;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use future_common::client::FutureBackend;
-use nakamoto_client::{Client, Config, Error, Handle};
+use nakamoto_client::handle::Handle;
+use nakamoto_client::model::Tip;
+use nakamoto_client::{Client, Config, Error};
 use nakamoto_net_poll::{Reactor, Waker};
-use serde_json::{json, Value};
-use std::collections::HashMap;
+use serde_json::Value;
 use std::net::TcpStream;
 use std::thread::JoinHandle;
 
 struct Nakamoto {
-    handler: Handle<Waker>,
+    handler: nakamoto_client::Handle<Waker>,
     worker: JoinHandle<Result<(), Error>>,
 }
 
@@ -55,12 +56,15 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
         Ok(response)
     }
 
-    /// The plugin must respond to getchaininfo with the following fields:
-    /// - chain (string), the network name as introduced in bip70
-    /// - headercount (number), the number of fetched block headers
-    /// - blockcount (number), the number of fetched block body
-    /// - ibd (bool), whether the backend is performing initial block download
     fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
+        if let Ok(Tip{height, ..}) = self.handler.get_tip() {
+            let mut resp = json_utils::init_payload();
+            let height: i64 = height.to_be().try_into().unwrap();
+            json_utils::add_number(&mut resp, "headercount", height);
+            json_utils::add_number(&mut resp, "blockcount", height);
+            json_utils::add_bool(&mut resp, "ibd", false);
+        }
+
         todo!()
     }
 

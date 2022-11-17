@@ -9,6 +9,11 @@ use std::collections::HashMap;
 pub trait FutureBackend<T: Clone> {
     type Error = String;
 
+    /// The plugin must respond to getchaininfo with the following fields:
+    /// - `chain` (string), the network name as introduced in bip70
+    /// - `headercount` (number), the number of fetched block headers
+    /// - `blockcount` (number), the number of fetched block body
+    /// - `ibd` (bool), whether the backend is performing initial block download
     fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
         todo!()
     }

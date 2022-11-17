@@ -4,15 +4,15 @@ version = 3
 
 [[package]]
 name = "bech32"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf9ff0bbfd639f15c74af777d81383cf53efb7c93613f6cab67c6c11e05bbf8b"
+checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
 name = "bitcoin"
-version = "0.28.1"
+version = "0.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05bba324e6baf655b882df672453dbbc527bc938cadd27750ae510aaccc3a66a"
+checksum = "0694ea59225b0c5f3cb405ff3f670e4828358ed26aec49dc352f730f0cb1a8a3"
 dependencies = [
  "bech32",
  "bitcoin_hashes",
@@ -21,9 +21,9 @@ dependencies = [
 
 [[package]]
 name = "bitcoin_hashes"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "006cc91e1a1d99819bc5b8214be3555c1f0611b169f527a1fdc54ed1f2b745b0"
+checksum = "90064b8dee6815a6470d60bad07bbbaee885c0e12d04177138fa3291a01b7bc4"
 
 [[package]]
 name = "cc"
@@ -50,9 +50,9 @@ dependencies = [
 
 [[package]]
 name = "clightningrpc-common"
-version = "0.3.0-beta.2"
+version = "0.3.0-beta.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e1bfaceb50e4aa14823b3dcb3dcd3f8e5b2d50971a0bbe40d40af5b5d37c28a"
+checksum = "04d9821ddb8b5eee8f922fea6871f8684cf3eb74a1cb54f6a6782df70fe28b37"
 dependencies = [
  "serde",
  "serde_json",
@@ -157,53 +157,72 @@ dependencies = [
 
 [[package]]
 name = "nakamoto-chain"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcf74906402304d3dbaa16e2f1d67ca293738e17b694660cb242ee22120bfc08"
+version = "0.4.0"
 dependencies = [
  "log",
- "nakamoto-common",
+ "nakamoto-common 0.4.0",
  "thiserror",
 ]
 
 [[package]]
 name = "nakamoto-client"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bb53c854715d2d51fbb9413e6fd05e9c2fab6cd08a37128772318f5ef0bf95b"
+version = "0.4.0"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
  "log",
  "microserde",
  "nakamoto-chain",
- "nakamoto-common",
- "nakamoto-net",
- "nakamoto-p2p",
+ "nakamoto-common 0.4.0",
+ "nakamoto-net 0.4.0",
+ "nakamoto-p2p 0.4.0",
  "thiserror",
 ]
 
 [[package]]
 name = "nakamoto-common"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "503e8ecca6883057de0a7f07197d4d4aa8a22eefcaa055aae99dd1402a40dbee"
+version = "0.4.0"
 dependencies = [
  "bitcoin",
  "bitcoin_hashes",
  "fastrand",
  "log",
  "microserde",
- "nakamoto-net",
+ "nakamoto-net 0.4.0",
+ "nonempty",
+ "thiserror",
+]
+
+[[package]]
+name = "nakamoto-common"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ce6260eda171e60381e40c24a59b5f103d0ca0225c7071972b7c2da52958ca0"
+dependencies = [
+ "bitcoin",
+ "bitcoin_hashes",
+ "fastrand",
+ "microserde",
+ "nakamoto-net 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nonempty",
  "thiserror",
 ]
 
 [[package]]
 name = "nakamoto-net"
-version = "0.3.0"
+version = "0.4.0"
+dependencies = [
+ "crossbeam-channel",
+ "fastrand",
+ "log",
+ "thiserror",
+]
+
+[[package]]
+name = "nakamoto-net"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5e6dff585126c1582b4316cc13ba81db656693c95ea7caa6f62da6d5c0c0228"
+checksum = "5c84e6269b64d8a643464498c220bbc72f79e58b4b58628b0e11cbbbd8ed71e7"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
@@ -213,30 +232,41 @@ dependencies = [
 
 [[package]]
 name = "nakamoto-net-poll"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5675172c3901f77994f44f8f5d95f72bde6211c494d0a1ed3585bf8bc1f864c6"
+version = "0.4.0"
 dependencies = [
  "crossbeam-channel",
  "libc",
  "log",
- "nakamoto-net",
+ "nakamoto-net 0.4.0",
  "popol",
  "socket2",
 ]
 
 [[package]]
 name = "nakamoto-p2p"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab93edcade7c86e04b6d0d0a32aff2498785cdb502b3b15e23f2ecad2e3a0b65"
+version = "0.4.0"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
  "log",
  "microserde",
- "nakamoto-common",
- "nakamoto-net",
+ "nakamoto-common 0.4.0",
+ "nakamoto-net 0.4.0",
+ "thiserror",
+]
+
+[[package]]
+name = "nakamoto-p2p"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c22f70ce4e64ecf43649d3b53879d3ca634cf8bb12a42caed407138c705a9e72"
+dependencies = [
+ "crossbeam-channel",
+ "fastrand",
+ "log",
+ "microserde",
+ "nakamoto-common 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nakamoto-net 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
 ]
 
@@ -244,12 +274,13 @@ dependencies = [
 name = "nakamoto_cln_client"
 version = "0.1.0"
 dependencies = [
+ "clightningrpc-common",
  "clightningrpc-plugin",
  "future-common",
  "nakamoto-client",
- "nakamoto-common",
+ "nakamoto-common 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nakamoto-net-poll",
- "nakamoto-p2p",
+ "nakamoto-p2p 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json",
 ]
 
@@ -270,9 +301,9 @@ dependencies = [
 
 [[package]]
 name = "popol"
-version = "0.5.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dac9010e6fc2d991bbf3c362433214c28f7f1a82151b6b1de8dd69d27211495"
+checksum = "c6577306b0ffc3764acc788764b0ddd15d85f8b382ef9977769ebf701db79ace"
 dependencies = [
  "libc",
 ]
@@ -303,18 +334,19 @@ checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
 
 [[package]]
 name = "secp256k1"
-version = "0.22.1"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26947345339603ae8395f68e2f3d85a6b0a8ddfe6315818e80b8504415099db0"
+checksum = "ff55dc09d460954e9ef2fa8a7ced735a964be9981fd50e870b2b3b0705e14964"
 dependencies = [
+ "bitcoin_hashes",
  "secp256k1-sys",
 ]
 
 [[package]]
 name = "secp256k1-sys"
-version = "0.5.2"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "152e20a0fd0519390fc43ab404663af8a0b794273d2a91d60ad4a39f13ffe110"
+checksum = "83080e2c2fc1006e625be82e5d1eb6a43b7fd9578b617fcc55814daf286bba4b"
 dependencies = [
  "cc",
 ]
