@@ -3,9 +3,12 @@ use clightningrpc_common::json_utils;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use future_common::client::FutureBackend;
+use nakamoto_client::chan::Receiver;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
 use nakamoto_client::{Client, Config, Error};
+use nakamoto_common::bitcoin::psbt::serialize::Deserialize;
+use nakamoto_common::block::{Block, Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
 use serde_json::Value;
 use std::net::TcpStream;
@@ -39,33 +42,44 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
     /// The plugin must respond to getrawblockbyheight with the following fields:
     /// - blockhash (string), the block hash as a hexadecimal string
     /// - block (string), the block content as a hexadecimal string
-    fn sync_block_by_height(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
+    fn sync_block_by_height(&self, _: &mut Plugin<T>, height: u64) -> Result<Value, Self::Error> {
         let mut response = json_utils::init_payload();
-        let header = self.handler.get_block_by_height(0).unwrap();
+        let header = self.handler.get_block_by_height(height).unwrap();
         if let None = header {
+            // FIXME: this need to be improved
             return Ok(response);
         }
+
+        // FIXME: get the from the stream!
+
         let header = header.unwrap();
+        if let Err(err) = self.handler.request_block(&header.block_hash()) {
+            let err = PluginError::new(1, err.to_string().as_str(), None);
+            return Err(err);
+        }
+
         json_utils::add_str(
             &mut response,
             "blockhash",
             header.block_hash().to_string().as_str(),
         );
-        // TODO: get block in nakamoto
         json_utils::add_str(&mut response, "block", "");
         Ok(response)
     }
 
     fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
-        if let Ok(Tip{height, ..}) = self.handler.get_tip() {
-            let mut resp = json_utils::init_payload();
-            let height: i64 = height.to_be().try_into().unwrap();
-            json_utils::add_number(&mut resp, "headercount", height);
-            json_utils::add_number(&mut resp, "blockcount", height);
-            json_utils::add_bool(&mut resp, "ibd", false);
+        match self.handler.get_tip() {
+            Ok(Tip { height, .. }) => {
+                let mut resp = json_utils::init_payload();
+                let height: i64 = height.to_be().try_into().unwrap();
+                json_utils::add_number(&mut resp, "headercount", height);
+                json_utils::add_number(&mut resp, "blockcount", height);
+                // FIXME: support API in nakamoto
+                json_utils::add_bool(&mut resp, "ibd", false);
+                Ok(resp)
+            }
+            Err(err) => Err(PluginError::new(1, err.to_string().as_str(), None)),
         }
-
-        todo!()
     }
 
     /// The plugin, if fee estimation succeeds, must respond with the following fields:
@@ -81,22 +95,35 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
         todo!()
     }
 
-    /// The plugin must respond to gettxout with the following fields:
-    /// - amount (number), the output value in sats
-    /// - script (string), the output scriptPubKey
-    ///
     fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<(), Self::Error> {
         todo!()
     }
 
-    /// The plugin must respond to gettxout with the following fields:
-    /// - amount (number), the output value in sats
-    /// - script (string), the output scriptPubKey
-    ///
-    /// The plugin must broadcast it and respond with the following fields:
-    /// - success (boolean), which is true if the broadcast succeeded
-    /// - errmsg (string), if success is false, the reason why it failed
-    fn sync_send_raw_transaction(&self, _: &mut Plugin<T>) -> Result<(), Self::Error> {
-        todo!()
+    fn sync_send_raw_transaction(
+        &self,
+        _: &mut Plugin<T>,
+        tx: &str,
+        _allow_hight_fee: bool,
+    ) -> Result<Value, Self::Error> {
+        // FIXME: catch and log the error
+        let btc_tx = Transaction::deserialize(tx.as_bytes());
+        if let Err(err) = btc_tx {
+            let err = PluginError::new(1, err.to_string().as_str(), None);
+            return Err(err);
+        }
+        let btc_tx = btc_tx.unwrap();
+        match self.handler.submit_transaction(btc_tx) {
+            Ok(_) => {
+                let mut resp = json_utils::init_payload();
+                json_utils::add_bool(&mut resp, "success", true);
+                Ok(resp)
+            }
+            Err(err) => {
+                let mut resp = json_utils::init_payload();
+                json_utils::add_bool(&mut resp, "success", false);
+                json_utils::add_str(&mut resp, "errmsg", err.to_string().as_str());
+                Ok(resp)
+            }
+        }
     }
 }
