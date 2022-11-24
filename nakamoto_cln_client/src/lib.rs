@@ -6,8 +6,8 @@ use future_common::client::FutureBackend;
 use nakamoto_client::chan::Receiver;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
-use nakamoto_client::{Client, Config, Error};
-use nakamoto_common::bitcoin::psbt::serialize::Deserialize;
+use nakamoto_client::{Client, Config, Error, Network};
+use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::block::{Block, Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
 use serde_json::Value;
@@ -15,6 +15,7 @@ use std::net::TcpStream;
 use std::thread::JoinHandle;
 
 struct Nakamoto {
+    network: Network,
     handler: nakamoto_client::Handle<Waker>,
     worker: JoinHandle<Result<(), Error>>,
 }
@@ -23,14 +24,19 @@ impl Nakamoto {
     pub fn new(config: Config) -> Result<Self, Error> {
         let nakamoto = Client::<Reactor<TcpStream>>::new()?;
         let handler = nakamoto.handle();
+        let network = config.network;
         let worker = std::thread::spawn(|| nakamoto.run(config));
-        let client = Nakamoto { handler, worker };
-
+        let client = Nakamoto {
+            handler,
+            worker,
+            network,
+        };
         Ok(client)
     }
 
     // FIXME: return the correct error
     pub fn stop(self) -> Result<(), Error> {
+        self.handler.shutdown()?;
         let _ = self.worker.join();
         Ok(())
     }
@@ -39,12 +45,10 @@ impl Nakamoto {
 impl<T: Clone> FutureBackend<T> for Nakamoto {
     type Error = PluginError;
 
-    /// The plugin must respond to getrawblockbyheight with the following fields:
-    /// - blockhash (string), the block hash as a hexadecimal string
-    /// - block (string), the block content as a hexadecimal string
     fn sync_block_by_height(&self, _: &mut Plugin<T>, height: u64) -> Result<Value, Self::Error> {
         let mut response = json_utils::init_payload();
         let header = self.handler.get_block_by_height(height).unwrap();
+        let blk_chan = self.handler.blocks();
         if let None = header {
             // FIXME: this need to be improved
             return Ok(response);
@@ -63,7 +67,11 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
             "blockhash",
             header.block_hash().to_string().as_str(),
         );
-        json_utils::add_str(&mut response, "block", "");
+
+        let (blk, _) = blk_chan.recv().unwrap();
+        let serialize = serialize(&blk);
+        let ser_str = std::str::from_utf8(&serialize).unwrap();
+        json_utils::add_str(&mut response, "block", ser_str);
         Ok(response)
     }
 
@@ -74,7 +82,9 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
                 let height: i64 = height.to_be().try_into().unwrap();
                 json_utils::add_number(&mut resp, "headercount", height);
                 json_utils::add_number(&mut resp, "blockcount", height);
-                // FIXME: support API in nakamoto
+                json_utils::add_str(&mut resp, "chain", self.network.as_str());
+
+                // FIXME: need to be supported
                 json_utils::add_bool(&mut resp, "ibd", false);
                 Ok(resp)
             }
@@ -103,27 +113,16 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
         &self,
         _: &mut Plugin<T>,
         tx: &str,
-        _allow_hight_fee: bool,
+        _: bool,
     ) -> Result<Value, Self::Error> {
-        // FIXME: catch and log the error
-        let btc_tx = Transaction::deserialize(tx.as_bytes());
-        if let Err(err) = btc_tx {
-            let err = PluginError::new(1, err.to_string().as_str(), None);
-            return Err(err);
+        let tx: Transaction = deserialize(tx.as_bytes()).unwrap();
+        let mut resp = json_utils::init_payload();
+        if let Err(err) = self.handler.submit_transaction(tx) {
+            json_utils::add_bool(&mut resp, "success", false);
+            json_utils::add_str(&mut resp, "errmsg", format!("{}", err).as_str());
+        } else {
+            json_utils::add_bool(&mut resp, "success", true);
         }
-        let btc_tx = btc_tx.unwrap();
-        match self.handler.submit_transaction(btc_tx) {
-            Ok(_) => {
-                let mut resp = json_utils::init_payload();
-                json_utils::add_bool(&mut resp, "success", true);
-                Ok(resp)
-            }
-            Err(err) => {
-                let mut resp = json_utils::init_payload();
-                json_utils::add_bool(&mut resp, "success", false);
-                json_utils::add_str(&mut resp, "errmsg", err.to_string().as_str());
-                Ok(resp)
-            }
-        }
+        Ok(resp)
     }
 }

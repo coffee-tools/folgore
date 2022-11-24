@@ -30,14 +30,18 @@ pub trait FutureBackend<T: Clone> {
 
     fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<(), Self::Error>;
 
-    // This call takes two parameters, a string `tx` representing
-    // a hex-encoded Bitcoin transaction, and a boolean `allowhighfees`,
-    // which if set means suppress any high-fees check implemented in the backend,
-    // since the given transaction may have fees that are very high.
+    /// This call takes two parameters, a string `tx` representing a hex-encoded
+    /// Bitcoin transaction, and a boolean `allowhighfees`, which if set means
+    /// suppress any high-fees check implemented in the backend,
+    /// since the given transaction may have fees that are very high.
+    ///
+    /// The plugin must broadcast it and respond with the following fields:
+    /// - `success` (boolean), which is true if the broadcast succeeded
+    /// - `errmsg` (string), if success is false, the reason why it failed
     fn sync_send_raw_transaction(
         &self,
         _: &mut Plugin<T>,
-        tx: &str,
-        allow_high_fee: bool,
+        _: &str,
+        _: bool,
     ) -> Result<Value, Self::Error>;
 }
