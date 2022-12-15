@@ -6,10 +6,12 @@ use future_common::client::FutureBackend;
 use nakamoto_client::chan::Receiver;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
-use nakamoto_client::{Client, Config, Error, Network};
+use nakamoto_client::{Client, Config, Error, Event, Network};
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::block::{Block, Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
+use nakamoto_p2p::fsm::fees::FeeEstimate;
+use nakamoto_p2p::fsm::InventoryEvent;
 use serde_json::Value;
 use std::net::TcpStream;
 use std::thread::JoinHandle;
@@ -34,6 +36,21 @@ impl Nakamoto {
         Ok(client)
     }
 
+    fn build_estimate_fees(&self, fees: FeeEstimate) -> Result<Value, PluginError> {
+        let mut resp = json_utils::init_payload();
+        let medium: i64 = fees.median.try_into().unwrap();
+        let low: i64 = fees.low.try_into().unwrap();
+        json_utils::add_number(&mut resp, "opening", medium);
+        json_utils::add_number(&mut resp, "mutual_close", low);
+        json_utils::add_number(&mut resp, "unilateral_close", low);
+        json_utils::add_number(&mut resp, "delayed_to_us", low);
+        json_utils::add_number(&mut resp, "htlc_resolution", low);
+        json_utils::add_number(&mut resp, "penalty", low);
+        json_utils::add_number(&mut resp, "min_acceptable", low);
+        json_utils::add_number(&mut resp, "max_acceptable", medium);
+        Ok(resp)
+    }
+
     // FIXME: return the correct error
     pub fn stop(self) -> Result<(), Error> {
         self.handler.shutdown()?;
@@ -53,8 +70,6 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
             // FIXME: this need to be improved
             return Ok(response);
         }
-
-        // FIXME: get the from the stream!
 
         let header = header.unwrap();
         if let Err(err) = self.handler.request_block(&header.block_hash()) {
@@ -92,17 +107,12 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
         }
     }
 
-    /// The plugin, if fee estimation succeeds, must respond with the following fields:
-    /// - opening (number), used for funding and also misc transactions
-    /// - mutual_close (number), used for the mutual close transaction
-    /// - unilateral_close (number), used for unilateral close (/commitment) transactions
-    /// - delayed_to_us (number), used for resolving our output from our unilateral close
-    /// - htlc_resolution (number), used for resolving HTLCs after an unilateral close
-    /// - penalty (number), used for resolving revoked transactions
-    /// - min_acceptable (number), used as the minimum acceptable feerate
-    /// - max_acceptable (number), used as the maximum acceptable feerate
-    fn sync_estimate_feed(&self, _: &mut Plugin<T>) -> Result<(), Self::Error> {
-        todo!()
+    fn sync_estimate_fees(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
+        loop {
+            if let Ok(Event::FeeEstimated { fees, .. }) = self.handler.events().recv() {
+                break self.build_estimate_fees(fees);
+            }
+        }
     }
 
     fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<(), Self::Error> {

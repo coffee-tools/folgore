@@ -158,52 +158,40 @@ dependencies = [
 [[package]]
 name = "nakamoto-chain"
 version = "0.4.0"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
 dependencies = [
  "log",
- "nakamoto-common 0.4.0",
+ "nakamoto-common",
  "thiserror",
 ]
 
 [[package]]
 name = "nakamoto-client"
 version = "0.4.0"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
  "log",
  "microserde",
  "nakamoto-chain",
- "nakamoto-common 0.4.0",
- "nakamoto-net 0.4.0",
- "nakamoto-p2p 0.4.0",
+ "nakamoto-common",
+ "nakamoto-net",
+ "nakamoto-p2p",
  "thiserror",
 ]
 
 [[package]]
 name = "nakamoto-common"
 version = "0.4.0"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
 dependencies = [
  "bitcoin",
  "bitcoin_hashes",
  "fastrand",
  "log",
  "microserde",
- "nakamoto-net 0.4.0",
- "nonempty",
- "thiserror",
-]
-
-[[package]]
-name = "nakamoto-common"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ce6260eda171e60381e40c24a59b5f103d0ca0225c7071972b7c2da52958ca0"
-dependencies = [
- "bitcoin",
- "bitcoin_hashes",
- "fastrand",
- "microserde",
- "nakamoto-net 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nakamoto-net",
  "nonempty",
  "thiserror",
 ]
@@ -211,18 +199,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-net"
 version = "0.4.0"
-dependencies = [
- "crossbeam-channel",
- "fastrand",
- "log",
- "thiserror",
-]
-
-[[package]]
-name = "nakamoto-net"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c84e6269b64d8a643464498c220bbc72f79e58b4b58628b0e11cbbbd8ed71e7"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
@@ -233,11 +210,12 @@ dependencies = [
 [[package]]
 name = "nakamoto-net-poll"
 version = "0.4.0"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
 dependencies = [
  "crossbeam-channel",
  "libc",
  "log",
- "nakamoto-net 0.4.0",
+ "nakamoto-net",
  "popol",
  "socket2",
 ]
@@ -245,28 +223,14 @@ dependencies = [
 [[package]]
 name = "nakamoto-p2p"
 version = "0.4.0"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
  "log",
  "microserde",
- "nakamoto-common 0.4.0",
- "nakamoto-net 0.4.0",
- "thiserror",
-]
-
-[[package]]
-name = "nakamoto-p2p"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c22f70ce4e64ecf43649d3b53879d3ca634cf8bb12a42caed407138c705a9e72"
-dependencies = [
- "crossbeam-channel",
- "fastrand",
- "log",
- "microserde",
- "nakamoto-common 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "nakamoto-net 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nakamoto-common",
+ "nakamoto-net",
  "thiserror",
 ]
 
@@ -278,9 +242,9 @@ dependencies = [
  "clightningrpc-plugin",
  "future-common",
  "nakamoto-client",
- "nakamoto-common 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nakamoto-common",
  "nakamoto-net-poll",
- "nakamoto-p2p 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nakamoto-p2p",
  "serde_json",
 ]
 

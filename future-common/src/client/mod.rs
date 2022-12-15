@@ -16,9 +16,20 @@ pub trait FutureBackend<T: Clone> {
     /// - `ibd` (bool), whether the backend is performing initial block download
     fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error>;
 
-    fn sync_estimate_feed(&self, _: &mut Plugin<T>) -> Result<(), Self::Error> {
-        todo!()
-    }
+    /// Polled by lightningd to get the current feerate, all values must
+    /// be passed in sat/kVB.
+    ///
+    /// The plugin, if fee estimation succeeds, must respond with the following fields:
+    /// - opening (number), used for funding and also misc transactions
+    /// - mutual_close (number), used for the mutual close transaction
+    /// - unilateral_close (number), used for unilateral close (/commitment) transactions
+    /// - delayed_to_us (number), used for resolving our output from our unilateral close
+    /// - htlc_resolution (number), used for resolving HTLCs after an unilateral close
+    /// - penalty (number), used for resolving revoked transactions
+    /// - min_acceptable (number), used as the minimum acceptable feerate
+    /// - max_acceptable (number), used as the maximum acceptable feerate
+    /// If fee estimation fails, the plugin must set all the fields to null.
+    fn sync_estimate_fees(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error>;
 
     /// This call takes one parameter, height, which determines the block height of the block to fetch.
     /// The plugin must set all fields to null if no block was found at the specified height.
