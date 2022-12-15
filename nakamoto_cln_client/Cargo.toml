@@ -5,10 +5,10 @@ edition = "2021"
 
 
 [dependencies]
-nakamoto-client = { path = "../../nakamoto/client" }
-nakamoto-net-poll = { path = "../../nakamoto/net/poll" }
-nakamoto-p2p = { version = "0.4.0" }
-nakamoto-common = { version = "0.4.0" }
+nakamoto-client = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
+nakamoto-net-poll = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
+nakamoto-p2p = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
+nakamoto-common = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
 future-common = { path = "../future-common" }
 clightningrpc-plugin = "0.3.0-beta.6"
 clightningrpc-common = "0.3.0-beta.3"
