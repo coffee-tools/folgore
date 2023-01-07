@@ -255,15 +255,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9e591e719385e6ebaeb5ce5d3887f7d5676fceca6411d1925ccc95745f3d6f7"
 
 [[package]]
-name = "plugin"
-version = "0.1.0"
-dependencies = [
- "clightningrpc",
- "clightningrpc-plugin",
- "future-common",
-]
-
-[[package]]
 name = "popol"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -295,6 +286,16 @@ name = "ryu"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
+
+[[package]]
+name = "satoshi_plugin"
+version = "0.1.0"
+dependencies = [
+ "clightningrpc",
+ "clightningrpc-plugin",
+ "future-common",
+ "serde_json",
+]
 
 [[package]]
 name = "secp256k1"
