@@ -115,7 +115,7 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
         }
     }
 
-    fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<(), Self::Error> {
+    fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
         todo!()
     }
 

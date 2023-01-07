@@ -39,7 +39,7 @@ pub trait FutureBackend<T: Clone> {
     /// - `block` (string), the block content as a hexadecimal string
     fn sync_block_by_height(&self, _: &mut Plugin<T>, height: u64) -> Result<Value, Self::Error>;
 
-    fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<(), Self::Error>;
+    fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error>;
 
     /// This call takes two parameters, a string `tx` representing a hex-encoded
     /// Bitcoin transaction, and a boolean `allowhighfees`, which if set means

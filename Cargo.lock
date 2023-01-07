@@ -294,6 +294,7 @@ dependencies = [
  "clightningrpc",
  "clightningrpc-plugin",
  "future-common",
+ "serde_json",
 ]
 
 [[package]]

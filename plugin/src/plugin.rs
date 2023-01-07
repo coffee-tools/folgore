@@ -4,9 +4,10 @@ use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
 use future_common::client::FutureBackend;
+use serde_json::Value;
 
 pub struct PluginState<'tcx> {
-    client: Option<Box<dyn FutureBackend<PluginState<'tcx>, Error = PluginError>>>,
+    pub(crate) client: Option<Box<dyn FutureBackend<PluginState<'tcx>, Error = PluginError>>>,
 }
 
 impl PluginState<'_> {
@@ -16,8 +17,108 @@ impl PluginState<'_> {
 }
 
 pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
-    let plugin = Plugin::new(PluginState::new(), false);
+    let mut plugin = Plugin::new(PluginState::new(), false)
+        .add_opt(
+            "bitcoin-rpcpassword",
+            "string",
+            None,
+            "Bitcoin RPC password",
+            false,
+        )
+        .add_opt("bitcoin-rpcuser", "string", None, "Bitcoin RPC use", false)
+        .add_opt(
+            "satoshi-client",
+            "string",
+            Some("nakamoto".to_owned()),
+            "Set up the client to use",
+            false,
+        )
+        .to_owned();
     plugin
+}
+
+// FIXME use the plugin_macros to semplify all this code
+#[derive(Clone)]
+struct GetChainInfoRPC {}
+
+impl RPCCommand<PluginState<'_>> for GetChainInfoRPC {
+    fn call<'c>(
+        &self,
+        plugin: &mut Plugin<PluginState<'_>>,
+        _request: &'c Value,
+    ) -> Result<Value, PluginError> {
+        plugin.log(LogLevel::Debug, "call get chain info");
+        let mut plg = plugin.to_owned();
+        let mut client = plg.state.client.as_mut().unwrap();
+        client.sync_chain_info(plugin)
+    }
+}
+
+#[derive(Clone)]
+struct EstimateFeesRPC {}
+
+impl RPCCommand<PluginState<'_>> for EstimateFeesRPC {
+    fn call<'c>(
+        &self,
+        plugin: &mut Plugin<PluginState<'_>>,
+        _request: &'c Value,
+    ) -> Result<Value, PluginError> {
+        plugin.log(LogLevel::Debug, "call get chain info");
+        let mut plg = plugin.to_owned();
+        let mut client = plg.state.client.as_mut().unwrap();
+        client.sync_estimate_fees(plugin)
+    }
+}
+
+#[derive(Clone)]
+struct GetRawBlockByHeightRPC {}
+
+impl RPCCommand<PluginState<'_>> for GetRawBlockByHeightRPC {
+    fn call<'c>(
+        &self,
+        plugin: &mut Plugin<PluginState<'_>>,
+        _request: &'c Value,
+    ) -> Result<Value, PluginError> {
+        plugin.log(LogLevel::Debug, "call get chain info");
+        let mut plg = plugin.to_owned();
+        let mut client = plg.state.client.as_mut().unwrap();
+        // FIXME: analyze the response to get the height
+        client.sync_block_by_height(plugin, 0)
+    }
+}
+
+#[derive(Clone)]
+struct GetUtxOutRPC {}
+
+impl RPCCommand<PluginState<'_>> for GetUtxOutRPC {
+    fn call<'c>(
+        &self,
+        plugin: &mut Plugin<PluginState<'_>>,
+        _request: &'c Value,
+    ) -> Result<Value, PluginError> {
+        plugin.log(LogLevel::Debug, "call get chain info");
+        let mut plg = plugin.to_owned();
+        let mut client = plg.state.client.as_mut().unwrap();
+        // FIXME: analyze the response to get the input
+        client.sync_get_utxo(plugin)
+    }
+}
+
+#[derive(Clone)]
+struct SendRawTransactionRPC {}
+
+impl RPCCommand<PluginState<'_>> for SendRawTransactionRPC {
+    fn call<'c>(
+        &self,
+        plugin: &mut Plugin<PluginState<'_>>,
+        _request: &'c Value,
+    ) -> Result<Value, PluginError> {
+        plugin.log(LogLevel::Debug, "call get chain info");
+        let mut plg = plugin.to_owned();
+        let mut client = plg.state.client.as_mut().unwrap();
+        // FIXME: analyze the response to get the input
+        client.sync_send_raw_transaction(plugin, "", true)
+    }
 }
 
 impl<'tcx> Clone for PluginState<'tcx> {
