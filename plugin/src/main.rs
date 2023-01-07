@@ -1,7 +1,6 @@
 #![feature(async_fn_in_trait)]
 #![feature(associated_type_defaults)]
-#![warn(incomplete_features)]
-mod client;
+#![allow(incomplete_features)]
 mod plugin;
 
 fn main() {

@@ -7,7 +7,7 @@ use future_common::client::FutureBackend;
 use serde_json::Value;
 
 pub struct PluginState<'tcx> {
-    pub(crate) client: Option<Box<dyn FutureBackend<PluginState<'tcx>, Error = PluginError>>>,
+    client: Option<Box<dyn FutureBackend<PluginState<'tcx>, Error = PluginError>>>,
 }
 
 impl PluginState<'_> {
@@ -17,7 +17,7 @@ impl PluginState<'_> {
 }
 
 pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
-    let mut plugin = Plugin::new(PluginState::new(), false)
+    let plugin = Plugin::new(PluginState::new(), false)
         .add_opt(
             "bitcoin-rpcpassword",
             "string",
@@ -79,7 +79,7 @@ impl RPCCommand<PluginState<'_>> for GetChainInfoRPC {
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
+        let client = plg.state.client.as_mut().unwrap();
         client.sync_chain_info(plugin)
     }
 }
@@ -95,7 +95,7 @@ impl RPCCommand<PluginState<'_>> for EstimateFeesRPC {
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
+        let client = plg.state.client.as_mut().unwrap();
         client.sync_estimate_fees(plugin)
     }
 }
@@ -111,7 +111,7 @@ impl RPCCommand<PluginState<'_>> for GetRawBlockByHeightRPC {
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
+        let client = plg.state.client.as_mut().unwrap();
         // FIXME: analyze the response to get the height
         client.sync_block_by_height(plugin, 0)
     }
@@ -128,7 +128,7 @@ impl RPCCommand<PluginState<'_>> for GetUtxOutRPC {
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
+        let client = plg.state.client.as_mut().unwrap();
         // FIXME: analyze the response to get the input
         client.sync_get_utxo(plugin)
     }
@@ -145,7 +145,7 @@ impl RPCCommand<PluginState<'_>> for SendRawTransactionRPC {
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
+        let client = plg.state.client.as_mut().unwrap();
         // FIXME: analyze the response to get the input
         client.sync_send_raw_transaction(plugin, "", true)
     }
