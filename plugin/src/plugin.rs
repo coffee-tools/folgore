@@ -4,7 +4,8 @@ use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
 use future_common::client::FutureBackend;
-use serde_json::Value;
+use nakamoto_cln_client::Nakamoto;
+use serde_json::{json, Value};
 
 pub struct PluginState<'tcx> {
     client: Option<Box<dyn FutureBackend<PluginState<'tcx>, Error = PluginError>>>,
@@ -18,6 +19,7 @@ impl PluginState<'_> {
 
 pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
     let plugin = Plugin::new(PluginState::new(), false)
+        .on_init(&on_init)
         .add_opt(
             "bitcoin-rpcpassword",
             "string",
@@ -65,6 +67,23 @@ pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
         )
         .to_owned();
     plugin
+}
+
+pub fn on_init(plugin: &mut Plugin<PluginState<'_>>) -> Value {
+    let dir = plugin.configuration.clone().unwrap().lightning_dir.as_str();
+    let client: String = plugin.get_opt("satoshi-client").unwrap();
+    match client.as_str() {
+        "satoshi-client" => {
+            let nakamoto = Nakamoto::new().unwrap();
+            plugin.state.client = Some(Box::new(nakamoto));
+        }
+        _ => {
+            return json!({
+                "disable": "client not supported"
+            })
+        }
+    }
+    json!({})
 }
 
 // FIXME use the plugin_macros to semplify all this code

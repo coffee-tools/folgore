@@ -60,9 +60,9 @@ dependencies = [
 
 [[package]]
 name = "clightningrpc-plugin"
-version = "0.3.0-beta.6"
+version = "0.3.0-beta.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8fb29eaaaee70f32e3eeea65c6227d124de53e32c6102728fad6209b7798543"
+checksum = "653c5c4427d241cf13d5aba6d2f30e4a594167a925391c2394050956f30789c2"
 dependencies = [
  "clightningrpc-common",
  "serde",
@@ -294,6 +294,7 @@ dependencies = [
  "clightningrpc",
  "clightningrpc-plugin",
  "future-common",
+ "nakamoto_cln_client",
  "serde_json",
 ]
 

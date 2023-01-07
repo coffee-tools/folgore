@@ -14,7 +14,7 @@ use serde_json::Value;
 use std::net::TcpStream;
 use std::thread::JoinHandle;
 
-struct Nakamoto {
+pub struct Nakamoto {
     network: Network,
     handler: nakamoto_client::Handle<Waker>,
     #[allow(dead_code)]
@@ -22,7 +22,8 @@ struct Nakamoto {
 }
 
 impl Nakamoto {
-    pub fn new(config: Config) -> Result<Self, Error> {
+    pub fn new() -> Result<Self, Error> {
+        let config = Config::default();
         let nakamoto = Client::<Reactor<TcpStream>>::new()?;
         let handler = nakamoto.handle();
         let network = config.network;
