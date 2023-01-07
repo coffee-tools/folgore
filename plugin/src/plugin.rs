@@ -33,6 +33,36 @@ pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
             "Set up the client to use",
             false,
         )
+        .add_rpc_method(
+            "getchaininfo",
+            "",
+            "getchaininfo to fetch information the data from the client",
+            GetChainInfoRPC {},
+        )
+        .add_rpc_method(
+            "estimatefees",
+            "",
+            "estimatefees to fetch the feed estimation from the client",
+            EstimateFeesRPC {},
+        )
+        .add_rpc_method(
+            "getrawblockbyheight",
+            "",
+            "getrawblockbyheight to fetch the raw block by height",
+            GetRawBlockByHeightRPC {},
+        )
+        .add_rpc_method(
+            "getutxout",
+            "",
+            "getutxout to fetch a utx with {txid} and {vout}",
+            GetUtxOutRPC {},
+        )
+        .add_rpc_method(
+            "sendrawtransaction",
+            "",
+            "sendrawtransaction to publish a new transaction",
+            SendRawTransactionRPC {},
+        )
         .to_owned();
     plugin
 }
