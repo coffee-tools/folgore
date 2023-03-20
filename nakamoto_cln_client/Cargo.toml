@@ -9,7 +9,7 @@ nakamoto-client = { git = "https://github.com/vincenzopalazzo/nakamoto", branch 
 nakamoto-net-poll = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
 nakamoto-p2p = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
 nakamoto-common = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
-future-common = { path = "../future-common" }
+satoshi-common = { path = "../satoshi-common" }
 clightningrpc-plugin = "0.3.0-beta.6"
 clightningrpc-common = "0.3.0-beta.3"
 serde_json = "1.0"

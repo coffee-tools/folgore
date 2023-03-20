@@ -98,14 +98,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "future-common"
-version = "0.1.0"
-dependencies = [
- "clightningrpc-plugin",
- "serde_json",
-]
-
-[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -240,11 +232,11 @@ version = "0.1.0"
 dependencies = [
  "clightningrpc-common",
  "clightningrpc-plugin",
- "future-common",
  "nakamoto-client",
  "nakamoto-common",
  "nakamoto-net-poll",
  "nakamoto-p2p",
+ "satoshi-common",
  "serde_json",
 ]
 
@@ -288,12 +280,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
 
 [[package]]
+name = "satoshi-common"
+version = "0.1.0"
+dependencies = [
+ "clightningrpc-plugin",
+ "serde_json",
+]
+
+[[package]]
 name = "satoshi_plugin"
 version = "0.1.0"
 dependencies = [
  "clightningrpc",
  "clightningrpc-plugin",
- "future-common",
+ "satoshi-common",
  "serde_json",
 ]
 

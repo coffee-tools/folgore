@@ -1,6 +1,6 @@
 [workspace]
 members = [
-        "future-common",
+        "satoshi-common",
         "nakamoto_cln_client",
         "plugin",
 ]

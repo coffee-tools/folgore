@@ -3,7 +3,7 @@ use clightningrpc_plugin::commands::RPCCommand;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
-use future_common::client::FutureBackend;
+use satoshi_common::client::FutureBackend;
 use serde_json::Value;
 
 pub struct PluginState<'tcx> {

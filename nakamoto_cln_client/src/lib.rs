@@ -2,16 +2,14 @@
 use clightningrpc_common::json_utils;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
-use future_common::client::FutureBackend;
-use nakamoto_client::chan::Receiver;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
 use nakamoto_client::{Client, Config, Error, Event, Network};
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
-use nakamoto_common::block::{Block, Height, Transaction};
+use nakamoto_common::block::Transaction;
 use nakamoto_net_poll::{Reactor, Waker};
 use nakamoto_p2p::fsm::fees::FeeEstimate;
-use nakamoto_p2p::fsm::InventoryEvent;
+use satoshi_common::client::FutureBackend;
 use serde_json::Value;
 use std::net::TcpStream;
 use std::thread::JoinHandle;
