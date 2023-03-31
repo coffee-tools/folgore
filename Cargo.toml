@@ -1,7 +1,7 @@
 [workspace]
 members = [
         "satoshi-common",
-        "nakamoto_cln_client",
-        "plugin",
+        "satoshi-nakamoto",
+        "satoshi-plugin",
 ]
 resolver = "2"

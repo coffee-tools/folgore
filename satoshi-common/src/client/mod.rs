@@ -5,7 +5,7 @@ use serde_json::Value;
 /// Future backend trait that implement an optional async and sync
 /// interface to work with a cln node that want access to a bitcoin
 /// blockchain.
-pub trait FutureBackend<T: Clone> {
+pub trait SatoshiBackend<T: Clone> {
     type Error = String;
 
     /// The plugin must respond to getchaininfo with the following fields:
@@ -38,7 +38,14 @@ pub trait FutureBackend<T: Clone> {
     /// - `block` (string), the block content as a hexadecimal string
     fn sync_block_by_height(&self, _: &mut Plugin<T>, height: u64) -> Result<Value, Self::Error>;
 
-    fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error>;
+    /// This call takes two parameter, the txid (string) and the vout (number) identifying the UTXO we’re interested in.
+    ///
+    /// The plugin must set both fields to null if the specified TXO was spent.
+    ///
+    /// The plugin must respond to gettxout with the following fields:
+    /// - amount (number), the output value in sats
+    /// - script (string), the output scriptPubKey
+    fn sync_get_utxo(&self, _: &mut Plugin<T>, _: &str, _: u64) -> Result<Value, Self::Error>;
 
     /// This call takes two parameters, a string `tx` representing a hex-encoded
     /// Bitcoin transaction, and a boolean `allowhighfees`, which if set means

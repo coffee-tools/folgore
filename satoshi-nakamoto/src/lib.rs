@@ -4,17 +4,19 @@ use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
-use nakamoto_client::{Client, Config, Error, Event, Network};
+use nakamoto_client::{Client, Error, Event, Network};
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::block::Transaction;
 use nakamoto_net_poll::{Reactor, Waker};
 use nakamoto_p2p::fsm::fees::FeeEstimate;
-use satoshi_common::client::FutureBackend;
+use satoshi_common::client::SatoshiBackend;
 use serde_json::Value;
 use std::net::TcpStream;
 use std::thread::JoinHandle;
 
-struct Nakamoto {
+pub use nakamoto_client::Config;
+
+pub struct Nakamoto {
     network: Network,
     handler: nakamoto_client::Handle<Waker>,
     worker: JoinHandle<Result<(), Error>>,
@@ -57,7 +59,7 @@ impl Nakamoto {
     }
 }
 
-impl<T: Clone> FutureBackend<T> for Nakamoto {
+impl<T: Clone> SatoshiBackend<T> for Nakamoto {
     type Error = PluginError;
 
     fn sync_block_by_height(&self, _: &mut Plugin<T>, height: u64) -> Result<Value, Self::Error> {
@@ -113,7 +115,7 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
         }
     }
 
-    fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
+    fn sync_get_utxo(&self, _: &mut Plugin<T>, _: &str, _: u64) -> Result<Value, Self::Error> {
         todo!()
     }
 
