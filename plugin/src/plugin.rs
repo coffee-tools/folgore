@@ -1,13 +1,18 @@
 //! Plugin definition.
+use serde_json::Value;
+
+use clightningrpc_common::types::Request;
 use clightningrpc_plugin::commands::RPCCommand;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
-use satoshi_common::client::FutureBackend;
-use serde_json::Value;
+
+use satoshi_common::client::SatoshiBackend;
+
+use crate::model::{BlockByHeight, GetUTxo, SendRawTx};
 
 pub struct PluginState<'tcx> {
-    pub(crate) client: Option<Box<dyn FutureBackend<PluginState<'tcx>, Error = PluginError>>>,
+    pub(crate) client: Option<Box<dyn SatoshiBackend<PluginState<'tcx>, Error = PluginError>>>,
 }
 
 impl PluginState<'_> {
@@ -17,7 +22,7 @@ impl PluginState<'_> {
 }
 
 pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
-    let mut plugin = Plugin::new(PluginState::new(), false)
+    let plugin = Plugin::new(PluginState::new(), false)
         .add_opt(
             "bitcoin-rpcpassword",
             "string",
@@ -75,11 +80,11 @@ impl RPCCommand<PluginState<'_>> for GetChainInfoRPC {
     fn call<'c>(
         &self,
         plugin: &mut Plugin<PluginState<'_>>,
-        _request: &'c Value,
+        _: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
+        let client = plg.state.client.as_mut().unwrap();
         client.sync_chain_info(plugin)
     }
 }
@@ -91,11 +96,11 @@ impl RPCCommand<PluginState<'_>> for EstimateFeesRPC {
     fn call<'c>(
         &self,
         plugin: &mut Plugin<PluginState<'_>>,
-        _request: &'c Value,
+        _: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
+        let client = plg.state.client.as_mut().unwrap();
         client.sync_estimate_fees(plugin)
     }
 }
@@ -107,13 +112,13 @@ impl RPCCommand<PluginState<'_>> for GetRawBlockByHeightRPC {
     fn call<'c>(
         &self,
         plugin: &mut Plugin<PluginState<'_>>,
-        _request: &'c Value,
+        request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
-        // FIXME: analyze the response to get the height
-        client.sync_block_by_height(plugin, 0)
+        let client = plg.state.client.as_mut().unwrap();
+        let request: Request<BlockByHeight> = serde_json::from_value(request)?;
+        client.sync_block_by_height(plugin, request.params.height)
     }
 }
 
@@ -124,13 +129,13 @@ impl RPCCommand<PluginState<'_>> for GetUtxOutRPC {
     fn call<'c>(
         &self,
         plugin: &mut Plugin<PluginState<'_>>,
-        _request: &'c Value,
+        request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
-        // FIXME: analyze the response to get the input
-        client.sync_get_utxo(plugin)
+        let client = plg.state.client.as_mut().unwrap();
+        let request: Request<GetUTxo> = serde_json::from_value(request)?;
+        client.sync_get_utxo(plugin, &request.params.txid, request.params.vout)
     }
 }
 
@@ -141,13 +146,13 @@ impl RPCCommand<PluginState<'_>> for SendRawTransactionRPC {
     fn call<'c>(
         &self,
         plugin: &mut Plugin<PluginState<'_>>,
-        _request: &'c Value,
+        request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
-        let mut client = plg.state.client.as_mut().unwrap();
-        // FIXME: analyze the response to get the input
-        client.sync_send_raw_transaction(plugin, "", true)
+        let client = plg.state.client.as_mut().unwrap();
+        let request: Request<SendRawTx> = serde_json::from_value(request)?;
+        client.sync_send_raw_transaction(plugin, &request.params.tx, request.params.allowhighfees)
     }
 }
 

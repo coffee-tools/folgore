@@ -9,7 +9,7 @@ use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::block::Transaction;
 use nakamoto_net_poll::{Reactor, Waker};
 use nakamoto_p2p::fsm::fees::FeeEstimate;
-use satoshi_common::client::FutureBackend;
+use satoshi_common::client::SatoshiBackend;
 use serde_json::Value;
 use std::net::TcpStream;
 use std::thread::JoinHandle;
@@ -57,7 +57,7 @@ impl Nakamoto {
     }
 }
 
-impl<T: Clone> FutureBackend<T> for Nakamoto {
+impl<T: Clone> SatoshiBackend<T> for Nakamoto {
     type Error = PluginError;
 
     fn sync_block_by_height(&self, _: &mut Plugin<T>, height: u64) -> Result<Value, Self::Error> {
@@ -113,7 +113,7 @@ impl<T: Clone> FutureBackend<T> for Nakamoto {
         }
     }
 
-    fn sync_get_utxo(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
+    fn sync_get_utxo(&self, _: &mut Plugin<T>, _: &str, _: u64) -> Result<Value, Self::Error> {
         todo!()
     }
 
