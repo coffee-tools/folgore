@@ -1,5 +1,6 @@
 //! Plugin definition.
-use serde_json::Value;
+use satoshi_nakamoto::Nakamoto;
+use serde_json::{json, Value};
 
 use clightningrpc_common::types::Request;
 use clightningrpc_plugin::commands::RPCCommand;
@@ -8,8 +9,30 @@ use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
 
 use satoshi_common::client::SatoshiBackend;
+use satoshi_nakamoto::Config;
 
 use crate::model::{BlockByHeight, GetUTxo, SendRawTx};
+
+pub(crate) enum ClientType {
+    Nakamoto,
+    Esplora,
+}
+
+impl TryFrom<&str> for ClientType {
+    type Error = PluginError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "nakamoto" => Ok(Self::Nakamoto),
+            "esplora" => Ok(Self::Esplora),
+            _ => Err(PluginError::new(
+                -1,
+                &format!("client {value} not supported"),
+                None,
+            )),
+        }
+    }
+}
 
 pub struct PluginState<'tcx> {
     pub(crate) client: Option<Box<dyn SatoshiBackend<PluginState<'tcx>, Error = PluginError>>>,
@@ -18,6 +41,23 @@ pub struct PluginState<'tcx> {
 impl PluginState<'_> {
     fn new() -> Self {
         PluginState { client: None }
+    }
+
+    fn new_client(&mut self, client: &str) -> Result<(), PluginError> {
+        let client = ClientType::try_from(client)?;
+        match client {
+            ClientType::Nakamoto => {
+                // FIXME: make a proper configuration
+                let config = Config::default();
+                let client = Nakamoto::new(config)
+                    .map_err(|err| PluginError::new(-1, &format!("{err}"), None))?;
+                self.client = Some(Box::new(client));
+                Ok(())
+            }
+            ClientType::Esplora => {
+                todo!()
+            }
+        }
     }
 }
 
@@ -68,8 +108,17 @@ pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
             "sendrawtransaction to publish a new transaction",
             SendRawTransactionRPC {},
         )
+        .on_init(&on_init)
         .to_owned();
     plugin
+}
+
+fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
+    let client: String = plugin.get_opt("satoshi-client").unwrap();
+    if let Err(err) = plugin.state.new_client(&client) {
+        plugin.log(LogLevel::Debug, &format!("{err}"));
+    };
+    json!({})
 }
 
 // FIXME use the plugin_macros to semplify all this code

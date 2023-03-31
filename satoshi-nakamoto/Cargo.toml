@@ -1,5 +1,5 @@
 [package]
-name = "nakamoto_cln_client"
+name = "satoshi-nakamoto"
 version = "0.1.0"
 edition = "2021"
 
