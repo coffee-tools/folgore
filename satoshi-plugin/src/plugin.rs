@@ -1,9 +1,10 @@
 //! Plugin definition.
+use satoshi_esplora::Esplora;
 use satoshi_nakamoto::Nakamoto;
 use serde_json::{json, Value};
 
 use clightningrpc_common::types::Request;
-use clightningrpc_plugin::commands::RPCCommand;
+use clightningrpc_plugin::commands::{types::CLNConf, RPCCommand};
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
@@ -43,7 +44,7 @@ impl PluginState<'_> {
         PluginState { client: None }
     }
 
-    fn new_client(&mut self, client: &str) -> Result<(), PluginError> {
+    fn new_client(&mut self, client: &str, conf: &CLNConf) -> Result<(), PluginError> {
         let client = ClientType::try_from(client)?;
         match client {
             ClientType::Nakamoto => {
@@ -55,7 +56,10 @@ impl PluginState<'_> {
                 Ok(())
             }
             ClientType::Esplora => {
-                todo!()
+                // FIXME: check if there is the proxy enabled to pass the tor addrs
+                let client = Esplora::new(&conf.network)?;
+                self.client = Some(Box::new(client));
+                Ok(())
             }
         }
     }
@@ -115,7 +119,8 @@ pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
 
 fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     let client: String = plugin.get_opt("satoshi-client").unwrap();
-    if let Err(err) = plugin.state.new_client(&client) {
+    let conf = plugin.configuration.clone().unwrap();
+    if let Err(err) = plugin.state.new_client(&client, &conf) {
         plugin.log(LogLevel::Debug, &format!("{err}"));
     };
     json!({})

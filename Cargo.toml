@@ -2,6 +2,7 @@
 members = [
         "satoshi-common",
         "satoshi-nakamoto",
+        "satoshi-esplora",
         "satoshi-plugin",
 ]
 resolver = "2"
