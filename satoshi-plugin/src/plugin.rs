@@ -80,7 +80,7 @@ pub fn build_plugin() -> Plugin<PluginState> {
         .add_opt(
             "satoshi-client",
             "string",
-            Some("nakamoto".to_owned()),
+            Some("esplora".to_owned()),
             "Set up the client to use",
             false,
         )
