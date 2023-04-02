@@ -5,7 +5,7 @@ use clightningrpc_common::json_utils;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::types::LogLevel;
 use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
-use esplora_client::deserialize;
+use esplora_client::{deserialize, serialize};
 
 use esplora_client::{BlockingClient, Builder};
 use satoshi_common::client::SatoshiBackend;
@@ -93,26 +93,45 @@ fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option
     None
 }
 
+// FIXME: put in some library somewhere!
+struct ByteBuf<'a>(&'a [u8]);
+
+impl<'a> std::fmt::LowerHex for ByteBuf<'a> {
+    fn fmt(&self, fmtr: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        for byte in self.0 {
+            fmtr.write_fmt(format_args!("{:02x}", byte))?;
+        }
+        Ok(())
+    }
+}
+
 impl<T: Clone> SatoshiBackend<T> for Esplora {
     fn sync_block_by_height(
         &self,
-        _: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        plugin: &mut clightningrpc_plugin::plugin::Plugin<T>,
         height: u64,
     ) -> Result<serde_json::Value, PluginError> {
         let block = self
             .client
             .get_blocks(Some(height.try_into().unwrap()))
             .map_err(from)?;
-        let block = block.first().clone().unwrap();
+        let block_hash = block.first().clone().unwrap();
+        let block_hash = block_hash.id;
+        let block = self.client.get_block_by_hash(&block_hash).map_err(from)?;
         let mut response = json_utils::init_payload();
-        json_utils::add_str(&mut response, "blockhash", &block.id.to_string());
-        json_utils::add_number(&mut response, "height", height.try_into().unwrap());
-        json_utils::add_number(
-            &mut response,
-            "time",
-            block.time.timestamp.try_into().unwrap(),
-        );
-        Ok(response)
+        if let Some(block) = block {
+            json_utils::add_str(&mut response, "blockhash", &block_hash.to_string());
+            let ser = serialize(&block);
+            let bytes = ByteBuf(&ser.as_slice());
+            json_utils::add_str(&mut response, "block", &format!("{:02x}", bytes));
+            return Ok(response);
+        }
+        plugin.log(LogLevel::Info, "block not found!");
+        let resp = json!({
+            "blockhash": null,
+            "block": null,
+        });
+        Ok(resp)
     }
 
     fn sync_chain_info(
