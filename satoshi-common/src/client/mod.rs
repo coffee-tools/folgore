@@ -5,7 +5,7 @@ use serde_json::Value;
 /// Future backend trait that implement an optional async and sync
 /// interface to work with a cln node that want access to a bitcoin
 /// blockchain.
-pub trait SatoshiBackend<T: Clone + Sized>: Clone {
+pub trait SatoshiBackend<T: Clone> {
     /// The plugin must respond to getchaininfo with the following fields:
     /// - `chain` (string), the network name as introduced in bip70
     /// - `headercount` (number), the number of fetched block headers

@@ -1,4 +1,6 @@
 //! Plugin definition.
+use std::sync::Arc;
+
 use satoshi_esplora::Esplora;
 use satoshi_nakamoto::Nakamoto;
 use serde_json::{json, Value};
@@ -36,7 +38,7 @@ impl TryFrom<&str> for ClientType {
 }
 
 pub struct PluginState {
-    pub(crate) client: Option<Box<dyn SatoshiBackend<PluginState>>>,
+    pub(crate) client: Option<Arc<dyn SatoshiBackend<PluginState>>>,
 }
 
 impl PluginState {
@@ -52,13 +54,13 @@ impl PluginState {
                 let config = Config::default();
                 let client = Nakamoto::new(config)
                     .map_err(|err| PluginError::new(-1, &format!("{err}"), None))?;
-                self.client = Some(Box::new(client));
+                self.client = Some(Arc::new(client));
                 Ok(())
             }
             ClientType::Esplora => {
                 // FIXME: check if there is the proxy enabled to pass the tor addrs
                 let client = Esplora::new(&conf.network)?;
-                self.client = Some(Box::new(client));
+                self.client = Some(Arc::new(client));
                 Ok(())
             }
         }
@@ -204,11 +206,8 @@ impl RPCCommand<PluginState> for SendRawTransactionRPC {
 
 impl Clone for PluginState {
     fn clone(&self) -> Self {
-        if let Some(client) = &self.client {
-            return PluginState {
-                client: Some(client),
-            };
+        Self {
+            client: self.client.clone(),
         }
-        PluginState { client: None }
     }
 }
