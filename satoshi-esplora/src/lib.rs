@@ -1,7 +1,12 @@
+use std::fmt::Display;
+
 use clightningrpc_common::json_utils;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::types::LogLevel;
-use esplora_client::{BlockingClient, Builder, Error};
+use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
+use esplora_client::deserialize;
+
+use esplora_client::{BlockingClient, Builder};
 use satoshi_common::client::SatoshiBackend;
 use serde_json::json;
 
@@ -54,8 +59,9 @@ impl TryFrom<&str> for Network {
     }
 }
 
+// FIXME: move this inside the Plugin API to map the error
 /// convert the error to a plugin error
-fn from(value: Error) -> PluginError {
+fn from<T: Display>(value: T) -> PluginError {
     PluginError::new(-1, &format!("{value}"), None)
 }
 
@@ -104,7 +110,7 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
             _ => panic!(""),
         };
 
-        let mut response = json_utils::init_success_response("getinfo".into());
+        let mut response = json_utils::init_payload();
         json_utils::add_str(&mut response, "chain", network);
         json_utils::add_number(&mut response, "headercount", current_height.into());
         json_utils::add_number(&mut response, "blockcount", current_height.into());
@@ -122,18 +128,38 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
     fn sync_get_utxo(
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
-        _: &str,
-        _: u64,
+        txid: &str,
+        idx: u64,
     ) -> Result<serde_json::Value, PluginError> {
-        todo!()
+        let txid = Txid::from_hex(txid).map_err(from)?;
+        let utxo = self.client.get_tx(&txid).map_err(from)?;
+
+        let mut resp = json_utils::init_payload();
+        if let Some(tx) = utxo {
+            let output: TxOut = tx.output[idx as usize].clone();
+            json_utils::add_number(&mut resp, "amount", output.value.try_into().map_err(from)?);
+            // FIXME: the to string here is what we are looking for?
+            json_utils::add_str(&mut resp, "script", &output.script_pubkey.to_string());
+            return Ok(resp);
+        }
+        // FIXME: return a null response, this requires some hep from the cln API side
+        Ok(json! {{}})
     }
 
     fn sync_send_raw_transaction(
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
-        _: &str,
-        _: bool,
+        tx: &str,
+        _with_hight_fee: bool,
     ) -> Result<serde_json::Value, PluginError> {
-        todo!()
+        let tx: Transaction = deserialize(tx.as_bytes()).map_err(from)?;
+        let tx_send = self.client.broadcast(&tx);
+
+        let mut resp = json_utils::init_payload();
+        json_utils::add_bool(&mut resp, "success", tx_send.is_ok());
+        if let Err(err) = tx_send {
+            json_utils::add_str(&mut resp, "errmsg", &err.to_string());
+        }
+        Ok(resp)
     }
 }
