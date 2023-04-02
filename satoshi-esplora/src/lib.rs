@@ -122,7 +122,24 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
     ) -> Result<serde_json::Value, PluginError> {
-        todo!()
+        let fee = self.client.get_fee_estimates().map_err(from)?;
+
+        let hight = fee["6"] as i64;
+        let urgent = fee["6"] as i64;
+        let normal = fee["12"] as i64;
+        let slow = fee["100"] as i64;
+
+        // FIXME: manage to return an empty response when there is some error
+        let mut resp = json_utils::init_payload();
+        json_utils::add_number(&mut resp, "opening", normal);
+        json_utils::add_number(&mut resp, "mutual_close", slow);
+        json_utils::add_number(&mut resp, "unilateral_close", urgent);
+        json_utils::add_number(&mut resp, "delayed_to_us", normal);
+        json_utils::add_number(&mut resp, "htlc_resolution", urgent);
+        json_utils::add_number(&mut resp, "penalty", normal);
+        json_utils::add_number(&mut resp, "min_acceptable", slow / 2);
+        json_utils::add_number(&mut resp, "max_acceptable", hight * 10);
+        Ok(resp)
     }
 
     fn sync_get_utxo(
