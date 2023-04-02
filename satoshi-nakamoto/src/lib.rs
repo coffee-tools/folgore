@@ -16,10 +16,10 @@ use std::thread::JoinHandle;
 
 pub use nakamoto_client::Config;
 
+#[derive(Clone)]
 pub struct Nakamoto {
     network: Network,
     handler: nakamoto_client::Handle<Waker>,
-    worker: JoinHandle<Result<(), Error>>,
 }
 
 impl Nakamoto {
@@ -27,12 +27,8 @@ impl Nakamoto {
         let nakamoto = Client::<Reactor<TcpStream>>::new()?;
         let handler = nakamoto.handle();
         let network = config.network;
-        let worker = std::thread::spawn(|| nakamoto.run(config));
-        let client = Nakamoto {
-            handler,
-            worker,
-            network,
-        };
+        let _worker = std::thread::spawn(|| nakamoto.run(config));
+        let client = Nakamoto { handler, network };
         Ok(client)
     }
 
@@ -54,15 +50,12 @@ impl Nakamoto {
     // FIXME: return the correct error
     pub fn stop(self) -> Result<(), Error> {
         self.handler.shutdown()?;
-        let _ = self.worker.join();
         Ok(())
     }
 }
 
 impl<T: Clone> SatoshiBackend<T> for Nakamoto {
-    type Error = PluginError;
-
-    fn sync_block_by_height(&self, _: &mut Plugin<T>, height: u64) -> Result<Value, Self::Error> {
+    fn sync_block_by_height(&self, _: &mut Plugin<T>, height: u64) -> Result<Value, PluginError> {
         let mut response = json_utils::init_payload();
         let header = self.handler.get_block_by_height(height).unwrap();
         let blk_chan = self.handler.blocks();
@@ -90,7 +83,7 @@ impl<T: Clone> SatoshiBackend<T> for Nakamoto {
         Ok(response)
     }
 
-    fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
+    fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, PluginError> {
         match self.handler.get_tip() {
             Ok(Tip { height, .. }) => {
                 let mut resp = json_utils::init_payload();
@@ -107,7 +100,7 @@ impl<T: Clone> SatoshiBackend<T> for Nakamoto {
         }
     }
 
-    fn sync_estimate_fees(&self, _: &mut Plugin<T>) -> Result<Value, Self::Error> {
+    fn sync_estimate_fees(&self, _: &mut Plugin<T>) -> Result<Value, PluginError> {
         loop {
             if let Ok(Event::FeeEstimated { fees, .. }) = self.handler.events().recv() {
                 break self.build_estimate_fees(fees);
@@ -115,7 +108,7 @@ impl<T: Clone> SatoshiBackend<T> for Nakamoto {
         }
     }
 
-    fn sync_get_utxo(&self, _: &mut Plugin<T>, _: &str, _: u64) -> Result<Value, Self::Error> {
+    fn sync_get_utxo(&self, _: &mut Plugin<T>, _: &str, _: u64) -> Result<Value, PluginError> {
         todo!()
     }
 
@@ -124,7 +117,7 @@ impl<T: Clone> SatoshiBackend<T> for Nakamoto {
         _: &mut Plugin<T>,
         tx: &str,
         _: bool,
-    ) -> Result<Value, Self::Error> {
+    ) -> Result<Value, PluginError> {
         let tx: Transaction = deserialize(tx.as_bytes()).unwrap();
         let mut resp = json_utils::init_payload();
         if let Err(err) = self.handler.submit_transaction(tx) {

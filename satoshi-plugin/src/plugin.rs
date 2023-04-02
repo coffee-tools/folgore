@@ -1,9 +1,12 @@
 //! Plugin definition.
+use std::sync::Arc;
+
+use satoshi_esplora::Esplora;
 use satoshi_nakamoto::Nakamoto;
 use serde_json::{json, Value};
 
 use clightningrpc_common::types::Request;
-use clightningrpc_plugin::commands::RPCCommand;
+use clightningrpc_plugin::commands::{types::CLNConf, RPCCommand};
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
@@ -34,16 +37,16 @@ impl TryFrom<&str> for ClientType {
     }
 }
 
-pub struct PluginState<'tcx> {
-    pub(crate) client: Option<Box<dyn SatoshiBackend<PluginState<'tcx>, Error = PluginError>>>,
+pub struct PluginState {
+    pub(crate) client: Option<Arc<dyn SatoshiBackend<PluginState>>>,
 }
 
-impl PluginState<'_> {
+impl PluginState {
     fn new() -> Self {
         PluginState { client: None }
     }
 
-    fn new_client(&mut self, client: &str) -> Result<(), PluginError> {
+    fn new_client(&mut self, client: &str, conf: &CLNConf) -> Result<(), PluginError> {
         let client = ClientType::try_from(client)?;
         match client {
             ClientType::Nakamoto => {
@@ -51,17 +54,20 @@ impl PluginState<'_> {
                 let config = Config::default();
                 let client = Nakamoto::new(config)
                     .map_err(|err| PluginError::new(-1, &format!("{err}"), None))?;
-                self.client = Some(Box::new(client));
+                self.client = Some(Arc::new(client));
                 Ok(())
             }
             ClientType::Esplora => {
-                todo!()
+                // FIXME: check if there is the proxy enabled to pass the tor addrs
+                let client = Esplora::new(&conf.network)?;
+                self.client = Some(Arc::new(client));
+                Ok(())
             }
         }
     }
 }
 
-pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
+pub fn build_plugin() -> Plugin<PluginState> {
     let plugin = Plugin::new(PluginState::new(), false)
         .add_opt(
             "bitcoin-rpcpassword",
@@ -74,7 +80,7 @@ pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
         .add_opt(
             "satoshi-client",
             "string",
-            Some("nakamoto".to_owned()),
+            Some("esplora".to_owned()),
             "Set up the client to use",
             false,
         )
@@ -115,7 +121,8 @@ pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
 
 fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     let client: String = plugin.get_opt("satoshi-client").unwrap();
-    if let Err(err) = plugin.state.new_client(&client) {
+    let conf = plugin.configuration.clone().unwrap();
+    if let Err(err) = plugin.state.new_client(&client, &conf) {
         plugin.log(LogLevel::Debug, &format!("{err}"));
     };
     json!({})
@@ -125,12 +132,8 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
 #[derive(Clone)]
 struct GetChainInfoRPC {}
 
-impl RPCCommand<PluginState<'_>> for GetChainInfoRPC {
-    fn call<'c>(
-        &self,
-        plugin: &mut Plugin<PluginState<'_>>,
-        _: Value,
-    ) -> Result<Value, PluginError> {
+impl RPCCommand<PluginState> for GetChainInfoRPC {
+    fn call<'c>(&self, plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
@@ -141,12 +144,8 @@ impl RPCCommand<PluginState<'_>> for GetChainInfoRPC {
 #[derive(Clone)]
 struct EstimateFeesRPC {}
 
-impl RPCCommand<PluginState<'_>> for EstimateFeesRPC {
-    fn call<'c>(
-        &self,
-        plugin: &mut Plugin<PluginState<'_>>,
-        _: Value,
-    ) -> Result<Value, PluginError> {
+impl RPCCommand<PluginState> for EstimateFeesRPC {
+    fn call<'c>(&self, plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
@@ -157,10 +156,10 @@ impl RPCCommand<PluginState<'_>> for EstimateFeesRPC {
 #[derive(Clone)]
 struct GetRawBlockByHeightRPC {}
 
-impl RPCCommand<PluginState<'_>> for GetRawBlockByHeightRPC {
+impl RPCCommand<PluginState> for GetRawBlockByHeightRPC {
     fn call<'c>(
         &self,
-        plugin: &mut Plugin<PluginState<'_>>,
+        plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
@@ -174,10 +173,10 @@ impl RPCCommand<PluginState<'_>> for GetRawBlockByHeightRPC {
 #[derive(Clone)]
 struct GetUtxOutRPC {}
 
-impl RPCCommand<PluginState<'_>> for GetUtxOutRPC {
+impl RPCCommand<PluginState> for GetUtxOutRPC {
     fn call<'c>(
         &self,
-        plugin: &mut Plugin<PluginState<'_>>,
+        plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
@@ -191,10 +190,10 @@ impl RPCCommand<PluginState<'_>> for GetUtxOutRPC {
 #[derive(Clone)]
 struct SendRawTransactionRPC {}
 
-impl RPCCommand<PluginState<'_>> for SendRawTransactionRPC {
+impl RPCCommand<PluginState> for SendRawTransactionRPC {
     fn call<'c>(
         &self,
-        plugin: &mut Plugin<PluginState<'_>>,
+        plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
@@ -205,8 +204,10 @@ impl RPCCommand<PluginState<'_>> for SendRawTransactionRPC {
     }
 }
 
-impl<'tcx> Clone for PluginState<'tcx> {
+impl Clone for PluginState {
     fn clone(&self) -> Self {
-        self.to_owned()
+        Self {
+            client: self.client.clone(),
+        }
     }
 }
