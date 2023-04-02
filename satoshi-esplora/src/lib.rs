@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Display;
 
 use clightningrpc_common::json_utils;
@@ -82,6 +83,16 @@ impl Esplora {
     }
 }
 
+fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option<i64> {
+    for rate in from..to {
+        let key = &format!("{rate}");
+        if estimation.contains_key(key) {
+            return Some(estimation[key] as i64);
+        }
+    }
+    None
+}
+
 impl<T: Clone> SatoshiBackend<T> for Esplora {
     fn sync_block_by_height(
         &self,
@@ -137,10 +148,12 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
     ) -> Result<serde_json::Value, PluginError> {
         let fee_rates = self.client.get_fee_estimates().map_err(from)?;
 
-        let hight = fee_rates["6"] as i64;
-        let urgent = fee_rates["6"] as i64;
-        let normal = fee_rates["12"] as i64;
-        let slow = fee_rates["100"] as i64;
+        // FIXME: if some of the valus is none, we should return
+        // a empity response to cln, see the satoshi backend docs
+        let hight = fee_in_range(&fee_rates, 2, 10).unwrap();
+        let urgent = fee_in_range(&fee_rates, 6, 15).unwrap();
+        let normal = fee_in_range(&fee_rates, 12, 24).unwrap();
+        let slow = fee_in_range(&fee_rates, 60, 170).unwrap();
 
         // FIXME: manage to return an empty response when there is some error
         let mut resp = json_utils::init_payload();
