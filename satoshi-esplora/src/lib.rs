@@ -2,6 +2,7 @@ use clightningrpc_plugin::errors::PluginError;
 use esplora_client::{BlockingClient, Builder};
 use satoshi_common::client::SatoshiBackend;
 
+#[derive(Clone)]
 enum Network {
     Bitcoin(String),
     Testnet(String),
@@ -47,6 +48,7 @@ impl TryFrom<&str> for Network {
     }
 }
 
+#[derive(Clone)]
 pub struct Esplora {
     network: Network,
     client: BlockingClient,
@@ -64,27 +66,25 @@ impl Esplora {
 }
 
 impl<T: Clone> SatoshiBackend<T> for Esplora {
-    type Error = PluginError;
-
     fn sync_block_by_height(
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
         height: u64,
-    ) -> Result<serde_json::Value, Self::Error> {
+    ) -> Result<serde_json::Value, PluginError> {
         todo!()
     }
 
     fn sync_chain_info(
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
-    ) -> Result<serde_json::Value, Self::Error> {
+    ) -> Result<serde_json::Value, PluginError> {
         todo!()
     }
 
     fn sync_estimate_fees(
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
-    ) -> Result<serde_json::Value, Self::Error> {
+    ) -> Result<serde_json::Value, PluginError> {
         todo!()
     }
 
@@ -93,7 +93,7 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
         _: &str,
         _: u64,
-    ) -> Result<serde_json::Value, Self::Error> {
+    ) -> Result<serde_json::Value, PluginError> {
         todo!()
     }
 
@@ -102,7 +102,7 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
         _: &str,
         _: bool,
-    ) -> Result<serde_json::Value, Self::Error> {
+    ) -> Result<serde_json::Value, PluginError> {
         todo!()
     }
 }

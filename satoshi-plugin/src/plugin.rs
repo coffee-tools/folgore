@@ -35,11 +35,11 @@ impl TryFrom<&str> for ClientType {
     }
 }
 
-pub struct PluginState<'tcx> {
-    pub(crate) client: Option<Box<dyn SatoshiBackend<PluginState<'tcx>, Error = PluginError>>>,
+pub struct PluginState {
+    pub(crate) client: Option<Box<dyn SatoshiBackend<PluginState>>>,
 }
 
-impl PluginState<'_> {
+impl PluginState {
     fn new() -> Self {
         PluginState { client: None }
     }
@@ -65,7 +65,7 @@ impl PluginState<'_> {
     }
 }
 
-pub fn build_plugin<'c>() -> Plugin<PluginState<'c>> {
+pub fn build_plugin() -> Plugin<PluginState> {
     let plugin = Plugin::new(PluginState::new(), false)
         .add_opt(
             "bitcoin-rpcpassword",
@@ -130,12 +130,8 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
 #[derive(Clone)]
 struct GetChainInfoRPC {}
 
-impl RPCCommand<PluginState<'_>> for GetChainInfoRPC {
-    fn call<'c>(
-        &self,
-        plugin: &mut Plugin<PluginState<'_>>,
-        _: Value,
-    ) -> Result<Value, PluginError> {
+impl RPCCommand<PluginState> for GetChainInfoRPC {
+    fn call<'c>(&self, plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
@@ -146,12 +142,8 @@ impl RPCCommand<PluginState<'_>> for GetChainInfoRPC {
 #[derive(Clone)]
 struct EstimateFeesRPC {}
 
-impl RPCCommand<PluginState<'_>> for EstimateFeesRPC {
-    fn call<'c>(
-        &self,
-        plugin: &mut Plugin<PluginState<'_>>,
-        _: Value,
-    ) -> Result<Value, PluginError> {
+impl RPCCommand<PluginState> for EstimateFeesRPC {
+    fn call<'c>(&self, plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
@@ -162,10 +154,10 @@ impl RPCCommand<PluginState<'_>> for EstimateFeesRPC {
 #[derive(Clone)]
 struct GetRawBlockByHeightRPC {}
 
-impl RPCCommand<PluginState<'_>> for GetRawBlockByHeightRPC {
+impl RPCCommand<PluginState> for GetRawBlockByHeightRPC {
     fn call<'c>(
         &self,
-        plugin: &mut Plugin<PluginState<'_>>,
+        plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
@@ -179,10 +171,10 @@ impl RPCCommand<PluginState<'_>> for GetRawBlockByHeightRPC {
 #[derive(Clone)]
 struct GetUtxOutRPC {}
 
-impl RPCCommand<PluginState<'_>> for GetUtxOutRPC {
+impl RPCCommand<PluginState> for GetUtxOutRPC {
     fn call<'c>(
         &self,
-        plugin: &mut Plugin<PluginState<'_>>,
+        plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
@@ -196,10 +188,10 @@ impl RPCCommand<PluginState<'_>> for GetUtxOutRPC {
 #[derive(Clone)]
 struct SendRawTransactionRPC {}
 
-impl RPCCommand<PluginState<'_>> for SendRawTransactionRPC {
+impl RPCCommand<PluginState> for SendRawTransactionRPC {
     fn call<'c>(
         &self,
-        plugin: &mut Plugin<PluginState<'_>>,
+        plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
@@ -210,8 +202,13 @@ impl RPCCommand<PluginState<'_>> for SendRawTransactionRPC {
     }
 }
 
-impl<'tcx> Clone for PluginState<'tcx> {
+impl Clone for PluginState {
     fn clone(&self) -> Self {
-        self.to_owned()
+        if let Some(client) = &self.client {
+            return PluginState {
+                client: Some(client),
+            };
+        }
+        PluginState { client: None }
     }
 }
