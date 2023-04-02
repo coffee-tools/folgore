@@ -88,7 +88,20 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
         height: u64,
     ) -> Result<serde_json::Value, PluginError> {
-        todo!()
+        let block = self
+            .client
+            .get_blocks(Some(height.try_into().unwrap()))
+            .map_err(from)?;
+        let block = block.first().clone().unwrap();
+        let mut response = json_utils::init_payload();
+        json_utils::add_str(&mut response, "blockhash", &block.id.to_string());
+        json_utils::add_number(&mut response, "height", height.try_into().unwrap());
+        json_utils::add_number(
+            &mut response,
+            "time",
+            block.time.timestamp.try_into().unwrap(),
+        );
+        Ok(response)
     }
 
     fn sync_chain_info(
