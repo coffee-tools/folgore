@@ -135,12 +135,12 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
     ) -> Result<serde_json::Value, PluginError> {
-        let fee = self.client.get_fee_estimates().map_err(from)?;
+        let fee_rates = self.client.get_fee_estimates().map_err(from)?;
 
-        let hight = fee["6"] as i64;
-        let urgent = fee["6"] as i64;
-        let normal = fee["12"] as i64;
-        let slow = fee["100"] as i64;
+        let hight = fee_rates["6"] as i64;
+        let urgent = fee_rates["6"] as i64;
+        let normal = fee_rates["12"] as i64;
+        let slow = fee_rates["100"] as i64;
 
         // FIXME: manage to return an empty response when there is some error
         let mut resp = json_utils::init_payload();
