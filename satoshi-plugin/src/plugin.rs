@@ -5,7 +5,6 @@ use satoshi_esplora::Esplora;
 use satoshi_nakamoto::Nakamoto;
 use serde_json::{json, Value};
 
-use clightningrpc_common::types::Request;
 use clightningrpc_plugin::commands::{types::CLNConf, RPCCommand};
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
@@ -165,8 +164,9 @@ impl RPCCommand<PluginState> for GetRawBlockByHeightRPC {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
-        let request: Request<BlockByHeight> = serde_json::from_value(request)?;
-        client.sync_block_by_height(plugin, request.params.height)
+        plugin.log(LogLevel::Info, &format!("cln request {request}"));
+        let request: BlockByHeight = serde_json::from_value(request)?;
+        client.sync_block_by_height(plugin, request.height)
     }
 }
 
@@ -182,8 +182,9 @@ impl RPCCommand<PluginState> for GetUtxOutRPC {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
-        let request: Request<GetUTxo> = serde_json::from_value(request)?;
-        client.sync_get_utxo(plugin, &request.params.txid, request.params.vout)
+        plugin.log(LogLevel::Info, &format!("cln request: {request}"));
+        let request: GetUTxo = serde_json::from_value(request)?;
+        client.sync_get_utxo(plugin, &request.txid, request.vout)
     }
 }
 
@@ -199,8 +200,9 @@ impl RPCCommand<PluginState> for SendRawTransactionRPC {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
-        let request: Request<SendRawTx> = serde_json::from_value(request)?;
-        client.sync_send_raw_transaction(plugin, &request.params.tx, request.params.allowhighfees)
+        plugin.log(LogLevel::Info, &format!("cln request: {request}"));
+        let request: SendRawTx = serde_json::from_value(request)?;
+        client.sync_send_raw_transaction(plugin, &request.tx, request.allowhighfees)
     }
 }
 

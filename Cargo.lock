@@ -191,7 +191,7 @@ dependencies = [
 [[package]]
 name = "esplora-client"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/rust-esplora-client.git?branch=macros/api#8191817a95f9eb77ae3876b39247d6343473474d"
+source = "git+https://github.com/vincenzopalazzo/rust-esplora-client.git?branch=macros/api#83ddef74ef1a2b72407626968d42aaace96a4cf9"
 dependencies = [
  "bitcoin",
  "log",
