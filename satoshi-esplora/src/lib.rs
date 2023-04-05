@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use log::{debug, info};
+
 use clightningrpc_common::json_utils;
+use clightningrpc_plugin::error;
 use clightningrpc_plugin::errors::PluginError;
-use clightningrpc_plugin::macros;
-use clightningrpc_plugin::types::LogLevel;
 use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
 use esplora_client::{deserialize, serialize};
 
@@ -52,11 +53,7 @@ impl TryFrom<&str> for Network {
                 "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/api"
                     .to_owned(),
             )),
-            _ => Err(PluginError::new(
-                -1,
-                &format!("network {value} not supported"),
-                None,
-            )),
+            _ => Err(error!("network {value} not supported")),
         }
     }
 }
@@ -136,7 +133,7 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
             json_utils::add_str(&mut response, "block", &format!("{:02x}", bytes));
             return Ok(response);
         }
-        plugin.log(LogLevel::Info, "block not found!");
+        debug!("block not found!");
         let resp = json!({
             "blockhash": null,
             "block": null,
@@ -146,13 +143,10 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
 
     fn sync_chain_info(
         &self,
-        plugin: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        _: &mut clightningrpc_plugin::plugin::Plugin<T>,
     ) -> Result<serde_json::Value, PluginError> {
         let current_height = self.client.get_height().map_err(from)?;
-        plugin.log(
-            LogLevel::Info,
-            &format!("blockchain height: {current_height}"),
-        );
+        info!("blockchain height: {current_height}");
         let genesis = self.client.get_blocks(Some(0)).map_err(from)?;
 
         let genesis = genesis.first().clone().unwrap();
@@ -160,7 +154,7 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
             "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f" => "main",
             "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943" => "test",
             "1466275836220db2944ca059a3a10ef6fd2ea684b0688d2c379296888a206003" => "liquidv1",
-            _ => panic!(""),
+            _ => return Err(error!("wrong chain hash {}", genesis.id)),
         };
 
         let mut response = json_utils::init_payload();
