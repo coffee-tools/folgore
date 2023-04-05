@@ -92,7 +92,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "clightningrpc-common"
 version = "0.3.0-beta.3"
-source = "git+https://github.com/laanwj/cln4rust.git?branch=macros/common#d605ea90a5364968481d82b8087c27fe17fe7a1f"
+source = "git+https://github.com/laanwj/cln4rust.git?branch=macros/api#ec0284991a61c03c312810db1c9942f5288e7640"
 dependencies = [
  "serde",
  "serde_json",
@@ -101,9 +101,10 @@ dependencies = [
 [[package]]
 name = "clightningrpc-plugin"
 version = "0.3.0-beta.7"
-source = "git+https://github.com/laanwj/cln4rust.git?branch=macros/common#d605ea90a5364968481d82b8087c27fe17fe7a1f"
+source = "git+https://github.com/laanwj/cln4rust.git?branch=macros/api#ec0284991a61c03c312810db1c9942f5288e7640"
 dependencies = [
  "clightningrpc-common",
+ "log",
  "serde",
  "serde_json",
 ]
@@ -838,6 +839,7 @@ dependencies = [
  "clightningrpc-common",
  "clightningrpc-plugin",
  "esplora-client",
+ "log",
  "satoshi-common",
  "serde_json",
 ]
