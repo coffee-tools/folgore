@@ -3,6 +3,7 @@ use std::fmt::Display;
 
 use clightningrpc_common::json_utils;
 use clightningrpc_plugin::errors::PluginError;
+use clightningrpc_plugin::macros;
 use clightningrpc_plugin::types::LogLevel;
 use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
 use esplora_client::{deserialize, serialize};
@@ -111,12 +112,21 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
         plugin: &mut clightningrpc_plugin::plugin::Plugin<T>,
         height: u64,
     ) -> Result<serde_json::Value, PluginError> {
+        let chain_tip = self.client.get_height().unwrap();
+        if height > chain_tip.into() {
+            let resp = json!({
+                "blockhash": null,
+                "block": null,
+            });
+            return Ok(resp);
+        }
         let block = self
             .client
             .get_blocks(Some(height.try_into().unwrap()))
             .map_err(from)?;
         let block_hash = block.first().clone().unwrap();
         let block_hash = block_hash.id;
+
         let block = self.client.get_block_by_hash(&block_hash).map_err(from)?;
         let mut response = json_utils::init_payload();
         if let Some(block) = block {
