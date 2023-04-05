@@ -13,6 +13,8 @@ use esplora_client::{BlockingClient, Builder};
 use satoshi_common::client::SatoshiBackend;
 use serde_json::json;
 
+macro_rules! hex (($hex:expr) => (<Vec<u8> as bitcoin_hashes::hex::FromHex>::from_hex($hex).unwrap()));
+
 #[derive(Clone)]
 enum Network {
     Bitcoin(String),
@@ -218,7 +220,10 @@ impl<T: Clone> SatoshiBackend<T> for Esplora {
         tx: &str,
         _with_hight_fee: bool,
     ) -> Result<serde_json::Value, PluginError> {
-        let tx: Transaction = deserialize(tx.as_bytes()).map_err(from)?;
+        let tx = hex!(tx);
+        let tx: Result<Transaction, _> = deserialize(&tx);
+        debug!("the transaction deserialised is {:?}", tx);
+        let tx = tx.map_err(from)?;
         let tx_send = self.client.broadcast(&tx);
 
         let mut resp = json_utils::init_payload();
