@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 clightningrpc-common = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api" }
-clightningrpc-plugin = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api", features = ["log"] }
+clightningrpc-plugin = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api" }
 satoshi-common = { path = "../satoshi-common" }
 satoshi-nakamoto = { path = "../satoshi-nakamoto" }
 satoshi-esplora = { path = "../satoshi-esplora" }

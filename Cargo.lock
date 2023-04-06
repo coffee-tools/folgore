@@ -119,7 +119,6 @@ version = "0.3.0-beta.7"
 source = "git+https://github.com/laanwj/cln4rust.git?branch=macros/api#ec0284991a61c03c312810db1c9942f5288e7640"
 dependencies = [
  "clightningrpc-common",
- "log",
  "serde",
  "serde_json",
 ]
@@ -843,6 +842,7 @@ checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
 name = "satoshi-common"
 version = "0.1.0"
 dependencies = [
+ "bitcoin_hashes 0.12.0",
  "clightningrpc-plugin",
  "serde_json",
 ]
@@ -851,7 +851,6 @@ dependencies = [
 name = "satoshi-esplora"
 version = "0.1.0"
 dependencies = [
- "bitcoin_hashes 0.12.0",
  "clightningrpc-common",
  "clightningrpc-plugin",
  "esplora-client",
