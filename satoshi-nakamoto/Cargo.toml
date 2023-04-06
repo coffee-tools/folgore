@@ -5,10 +5,10 @@ edition = "2021"
 
 
 [dependencies]
-nakamoto-client = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
-nakamoto-net-poll = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
-nakamoto-p2p = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
-nakamoto-common = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model"  }
+nakamoto-client = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model-fixes"  }
+nakamoto-net-poll = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model-fixes"  }
+nakamoto-p2p = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model-fixes"  }
+nakamoto-common = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model-fixes"  }
 satoshi-common = { path = "../satoshi-common" }
 clightningrpc-common = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api" }
 clightningrpc-plugin = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api" }
