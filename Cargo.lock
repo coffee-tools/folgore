@@ -543,7 +543,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-chain"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#17bbdabc138918768d10ec24e3db076fe076dbe7"
 dependencies = [
  "log",
  "nakamoto-common",
@@ -553,7 +553,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-client"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#17bbdabc138918768d10ec24e3db076fe076dbe7"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
@@ -569,7 +569,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-common"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#17bbdabc138918768d10ec24e3db076fe076dbe7"
 dependencies = [
  "bitcoin",
  "bitcoin_hashes 0.11.0",
@@ -584,7 +584,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-net"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#17bbdabc138918768d10ec24e3db076fe076dbe7"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
@@ -595,7 +595,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-net-poll"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#17bbdabc138918768d10ec24e3db076fe076dbe7"
 dependencies = [
  "crossbeam-channel",
  "libc",
@@ -608,7 +608,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-p2p"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model#d7ad99e5e4d9dab7562e4da181939b82f402c7af"
+source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#17bbdabc138918768d10ec24e3db076fe076dbe7"
 dependencies = [
  "crossbeam-channel",
  "fastrand",
@@ -808,16 +808,16 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.37.7"
+version = "0.37.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2aae838e49b3d63e9274e1c01833cc8139d3fec468c3b84688c628f44b1ae11d"
+checksum = "1aef160324be24d31a62147fae491c14d2204a3865c7ca8c3b0d7f7bcb3ea635"
 dependencies = [
  "bitflags",
  "errno",
  "io-lifetimes",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.45.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
