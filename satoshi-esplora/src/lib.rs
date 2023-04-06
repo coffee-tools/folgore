@@ -43,7 +43,7 @@ impl TryFrom<&str> for Network {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "bitcoin" => Ok(Self::Bitcoin("https://blockstream.infoi/api".to_owned())),
+            "bitcoin" => Ok(Self::Bitcoin("https://blockstream.info/api".to_owned())),
             "bitcoin/tor" => Ok(Self::BitcoinTor(
                 "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/api"
                     .to_owned(),
