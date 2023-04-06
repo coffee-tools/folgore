@@ -1,10 +1,11 @@
 //! Future client implementation for nakamoto
 use clightningrpc_common::json_utils;
+use clightningrpc_plugin::error;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
-use nakamoto_client::{Client, Error, Event, Network};
+pub use nakamoto_client::{Client, Error, Event, Network};
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::block::Transaction;
 use nakamoto_net_poll::{Reactor, Waker};
@@ -12,9 +13,10 @@ use nakamoto_p2p::fsm::fees::FeeEstimate;
 use satoshi_common::client::SatoshiBackend;
 use serde_json::Value;
 use std::net::TcpStream;
-use std::thread::JoinHandle;
 
 pub use nakamoto_client::Config;
+
+use satoshi_common::utils::{bitcoin_hashes, hex};
 
 #[derive(Clone)]
 pub struct Nakamoto {
@@ -27,8 +29,10 @@ impl Nakamoto {
         let nakamoto = Client::<Reactor<TcpStream>>::new()?;
         let handler = nakamoto.handle();
         let network = config.network;
+        // FIXME: join this later
         let _worker = std::thread::spawn(|| nakamoto.run(config));
         let client = Nakamoto { handler, network };
+
         Ok(client)
     }
 
@@ -87,23 +91,29 @@ impl<T: Clone> SatoshiBackend<T> for Nakamoto {
         match self.handler.get_tip() {
             Ok(Tip { height, .. }) => {
                 let mut resp = json_utils::init_payload();
-                let height: i64 = height.to_be().try_into().unwrap();
+                let height: i64 = height.try_into().unwrap();
                 json_utils::add_number(&mut resp, "headercount", height);
                 json_utils::add_number(&mut resp, "blockcount", height);
-                json_utils::add_str(&mut resp, "chain", self.network.as_str());
+                let network = match self.network {
+                    Network::Mainnet => "main",
+                    Network::Testnet => "test",
+                    Network::Regtest => "regtest",
+                    Network::Signet => "signet",
+                };
+                json_utils::add_str(&mut resp, "chain", network);
 
                 // FIXME: need to be supported
                 json_utils::add_bool(&mut resp, "ibd", false);
                 Ok(resp)
             }
-            Err(err) => Err(PluginError::new(1, err.to_string().as_str(), None)),
+            Err(err) => Err(error!("{err}")),
         }
     }
 
     fn sync_estimate_fees(&self, _: &mut Plugin<T>) -> Result<Value, PluginError> {
         loop {
             if let Ok(Event::FeeEstimated { fees, .. }) = self.handler.events().recv() {
-                break self.build_estimate_fees(fees);
+                return self.build_estimate_fees(fees);
             }
         }
     }
@@ -118,11 +128,12 @@ impl<T: Clone> SatoshiBackend<T> for Nakamoto {
         tx: &str,
         _: bool,
     ) -> Result<Value, PluginError> {
-        let tx: Transaction = deserialize(tx.as_bytes()).unwrap();
+        let tx = hex!(tx);
+        let tx: Transaction = deserialize(&tx).unwrap();
         let mut resp = json_utils::init_payload();
         if let Err(err) = self.handler.submit_transaction(tx) {
             json_utils::add_bool(&mut resp, "success", false);
-            json_utils::add_str(&mut resp, "errmsg", format!("{}", err).as_str());
+            json_utils::add_str(&mut resp, "errmsg", format!("{err}").as_str());
         } else {
             json_utils::add_bool(&mut resp, "success", true);
         }

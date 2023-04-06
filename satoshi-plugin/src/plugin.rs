@@ -1,17 +1,18 @@
 //! Plugin definition.
+use std::str::FromStr;
 use std::sync::Arc;
-
-use satoshi_esplora::Esplora;
-use satoshi_nakamoto::Nakamoto;
-use serde_json::{json, Value};
 
 use clightningrpc_plugin::commands::{types::CLNConf, RPCCommand};
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
+use serde_json::{json, Value};
+
+use satoshi_esplora::Esplora;
+use satoshi_nakamoto::Config;
+use satoshi_nakamoto::{Nakamoto, Network};
 
 use satoshi_common::client::SatoshiBackend;
-use satoshi_nakamoto::Config;
 
 use crate::model::{BlockByHeight, GetUTxo, SendRawTx};
 
@@ -50,7 +51,8 @@ impl PluginState {
         match client {
             ClientType::Nakamoto => {
                 // FIXME: make a proper configuration
-                let config = Config::default();
+                let mut config = Config::default();
+                config.network = Network::from_str(&conf.network).unwrap();
                 let client = Nakamoto::new(config)
                     .map_err(|err| PluginError::new(-1, &format!("{err}"), None))?;
                 self.client = Some(Arc::new(client));
@@ -113,7 +115,7 @@ pub fn build_plugin() -> Plugin<PluginState> {
             "sendrawtransaction to publish a new transaction",
             SendRawTransactionRPC {},
         )
-        .on_init(&on_init)
+        .on_init(on_init)
         .to_owned();
     plugin
 }
@@ -136,7 +138,9 @@ impl RPCCommand<PluginState> for GetChainInfoRPC {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
-        client.sync_chain_info(plugin)
+        let result = client.sync_chain_info(plugin);
+        plugin.log(LogLevel::Debug, &format!("{:?}", result));
+        result
     }
 }
 
@@ -145,10 +149,12 @@ struct EstimateFeesRPC {}
 
 impl RPCCommand<PluginState> for EstimateFeesRPC {
     fn call<'c>(&self, plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, PluginError> {
-        plugin.log(LogLevel::Debug, "call get chain info");
+        plugin.log(LogLevel::Debug, "call estimate fee info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
-        client.sync_estimate_fees(plugin)
+        let result = client.sync_estimate_fees(plugin);
+        plugin.log(LogLevel::Debug, &format!("{:?}", result));
+        result
     }
 }
 

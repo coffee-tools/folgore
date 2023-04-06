@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use log::{debug, info};
+use serde_json::json;
 
 use clightningrpc_common::json_utils;
 use clightningrpc_plugin::error;
@@ -11,9 +12,7 @@ use esplora_client::{deserialize, serialize};
 
 use esplora_client::{BlockingClient, Builder};
 use satoshi_common::client::SatoshiBackend;
-use serde_json::json;
-
-macro_rules! hex (($hex:expr) => (<Vec<u8> as bitcoin_hashes::hex::FromHex>::from_hex($hex).unwrap()));
+use satoshi_common::utils::{bitcoin_hashes, hex};
 
 #[derive(Clone)]
 enum Network {
