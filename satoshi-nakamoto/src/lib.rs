@@ -2,15 +2,16 @@
 
 use std::cell::Cell;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 use std::net::TcpStream;
 
-use clightningrpc_plugin::types::LogLevel;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
 pub use nakamoto_client::Config;
 pub use nakamoto_client::{Client, Error, Event, Network};
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
-use nakamoto_common::bitcoin_hashes::hex::ToHex;
+use nakamoto_common::bitcoin::Txid;
+use nakamoto_common::bitcoin_hashes::hex::{FromHex, ToHex};
 use nakamoto_common::block::{BlockHash, Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
 use nakamoto_p2p::fsm::fees::FeeEstimate;
@@ -28,8 +29,7 @@ use satoshi_common::utils::{bitcoin_hashes, hex};
 pub struct Nakamoto {
     network: Network,
     handler: nakamoto_client::Handle<Waker>,
-    fees: BTreeMap<Height, FeeEstimate>,
-    last_hash: Cell<Option<BlockHash>>,
+    current_height: Cell<Option<Height>>,
 }
 
 impl Nakamoto {
@@ -42,8 +42,7 @@ impl Nakamoto {
         let client = Nakamoto {
             handler,
             network,
-            fees: BTreeMap::new(),
-            last_hash: Cell::new(None),
+            current_height: Cell::new(None),
         };
 
         Ok(client)
@@ -84,27 +83,28 @@ impl Nakamoto {
     }
 }
 
+fn from<T: Display>(err: T) -> PluginError {
+    error!("{err}")
+}
+
 impl<T: Clone> SatoshiBackend<T> for Nakamoto {
-    fn sync_block_by_height(
-        &self,
-        plugin: &mut Plugin<T>,
-        height: u64,
-    ) -> Result<Value, PluginError> {
+    fn sync_block_by_height(&self, _p: &mut Plugin<T>, height: u64) -> Result<Value, PluginError> {
         let mut response = json_utils::init_payload();
         let header = self.handler.get_block_by_height(height).unwrap();
         let blk_chan = self.handler.blocks();
         if let None = header {
-            // FIXME: this need to be improved
-            return Ok(response);
+            return Ok(json!({
+                "blockhash": null,
+                "block": null,
+            }));
         }
 
         let header = header.unwrap();
         if let Err(err) = self.handler.request_block(&header.block_hash()) {
-            let err = PluginError::new(1, err.to_string().as_str(), None);
-            return Err(err);
+            return Err(error!("{err}"));
         }
 
-        self.last_hash.set(Some(header.block_hash()));
+        self.current_height.set(Some(height.into()));
         json_utils::add_str(
             &mut response,
             "blockhash",
@@ -142,24 +142,27 @@ impl<T: Clone> SatoshiBackend<T> for Nakamoto {
     }
 
     fn sync_estimate_fees(&self, _: &mut Plugin<T>) -> Result<Value, PluginError> {
-        let Some(last_hash) = self.last_hash.get() else {
+        let Some(height) = self.current_height.get() else {
             return self.null_estimate_fees();
         };
-        let _ = self.handler.request_block(&last_hash);
-        let Ok((_, Some(fees))) = self.handler.wait(|event| {
-            if let nakamoto_p2p::Event::Inventory(nakamoto_p2p::fsm::InventoryEvent::BlockProcessed { height, fees, ..}) = event {
-                Some((height, fees))
-            } else {
-                None
-            }
-        }) else {
+        let Some(fees) = self.handler.estimate_feerate(height - 6).map_err(from)? else {
             return self.null_estimate_fees();
         };
         self.build_estimate_fees(fees)
     }
 
-    fn sync_get_utxo(&self, _: &mut Plugin<T>, _: &str, _: u64) -> Result<Value, PluginError> {
-        todo!()
+    fn sync_get_utxo(&self, _: &mut Plugin<T>, txid: &str, idx: u64) -> Result<Value, PluginError> {
+        let txid = Txid::from_hex(txid).unwrap();
+        let Some(utxo) = self.handler.get_utxo(&txid, idx.try_into().unwrap()).map_err(from)? else {
+            return Ok(json!({
+                "amount": null,
+                "script": null,
+            }));
+        };
+        let mut resp = json_utils::init_payload();
+        json_utils::add_number(&mut resp, "amount", utxo.value.try_into().unwrap());
+        json_utils::add_str(&mut resp, "script", utxo.script_pubkey.to_hex().as_str());
+        Ok(resp)
     }
 
     fn sync_send_raw_transaction(
