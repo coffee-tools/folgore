@@ -185,12 +185,14 @@ impl RPCCommand<PluginState> for GetUtxOutRPC {
         plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
-        plugin.log(LogLevel::Debug, "call get chain info");
+        plugin.log(LogLevel::Debug, "call get utxo");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
         plugin.log(LogLevel::Info, &format!("cln request: {request}"));
         let request: GetUTxo = serde_json::from_value(request)?;
-        client.sync_get_utxo(plugin, &request.txid, request.vout)
+        let result = client.sync_get_utxo(plugin, &request.txid, request.vout);
+        plugin.log(LogLevel::Debug, &format!("{:?}", result));
+        result
     }
 }
 
