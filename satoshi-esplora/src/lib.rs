@@ -18,9 +18,11 @@ use satoshi_common::utils::{bitcoin_hashes, hex};
 enum Network {
     Bitcoin(String),
     Testnet(String),
+    #[allow(dead_code)]
     Liquid(String),
     BitcoinTor(String),
     TestnetTor(String),
+    #[allow(dead_code)]
     LiquidTor(String),
 }
 
@@ -67,16 +69,19 @@ fn from<T: Display>(value: T) -> PluginError {
 
 #[derive(Clone)]
 pub struct Esplora {
-    network: Network,
     client: BlockingClient,
 }
 
 impl Esplora {
-    pub fn new(network: &str) -> Result<Self, PluginError> {
-        let network = Network::try_from(network)?;
-        let builder = Builder::new(&network.url());
+    pub fn new(network: &str, url: Option<String>) -> Result<Self, PluginError> {
+        let url = if let Some(url) = url {
+            url
+        } else {
+            let network = Network::try_from(network)?;
+            network.url()
+        };
+        let builder = Builder::new(&url);
         Ok(Self {
-            network,
             client: builder.build_blocking().unwrap(),
         })
     }
@@ -107,7 +112,7 @@ impl<'a> std::fmt::LowerHex for ByteBuf<'a> {
 impl<T: Clone> SatoshiBackend<T> for Esplora {
     fn sync_block_by_height(
         &self,
-        plugin: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        _: &mut clightningrpc_plugin::plugin::Plugin<T>,
         height: u64,
     ) -> Result<serde_json::Value, PluginError> {
         let chain_tip = self.client.get_height().unwrap();

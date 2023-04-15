@@ -3,14 +3,14 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use clightningrpc_plugin::commands::{types::CLNConf, RPCCommand};
+use clightningrpc_plugin::error;
 use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
 use serde_json::{json, Value};
 
 use satoshi_esplora::Esplora;
-use satoshi_nakamoto::Config;
-use satoshi_nakamoto::{Nakamoto, Network};
+use satoshi_nakamoto::{Config, Nakamoto, Network};
 
 use satoshi_common::client::SatoshiBackend;
 
@@ -37,30 +37,33 @@ impl TryFrom<&str> for ClientType {
     }
 }
 
+#[derive(Clone)]
 pub struct PluginState {
     pub(crate) client: Option<Arc<dyn SatoshiBackend<PluginState>>>,
+    pub(crate) esplora_url: Option<String>,
 }
 
 impl PluginState {
     fn new() -> Self {
-        PluginState { client: None }
+        PluginState {
+            client: None,
+            esplora_url: None,
+        }
     }
 
     fn new_client(&mut self, client: &str, conf: &CLNConf) -> Result<(), PluginError> {
         let client = ClientType::try_from(client)?;
         match client {
             ClientType::Nakamoto => {
-                // FIXME: make a proper configuration
                 let mut config = Config::default();
                 config.network = Network::from_str(&conf.network).unwrap();
-                let client = Nakamoto::new(config)
-                    .map_err(|err| PluginError::new(-1, &format!("{err}"), None))?;
+                let client = Nakamoto::new(config).map_err(|err| error!("{err}"))?;
                 self.client = Some(Arc::new(client));
                 Ok(())
             }
             ClientType::Esplora => {
                 // FIXME: check if there is the proxy enabled to pass the tor addrs
-                let client = Esplora::new(&conf.network)?;
+                let client = Esplora::new(&conf.network, self.esplora_url.to_owned())?;
                 self.client = Some(Arc::new(client));
                 Ok(())
             }
@@ -79,10 +82,17 @@ pub fn build_plugin() -> Plugin<PluginState> {
         )
         .add_opt("bitcoin-rpcuser", "string", None, "Bitcoin RPC use", false)
         .add_opt(
-            "satoshi-client",
+            "bitcoin-client",
             "string",
             Some("esplora".to_owned()),
             "Set up the client to use",
+            false,
+        )
+        .add_opt(
+            "bitcoin-esplora-url",
+            "string",
+            Some(String::new()),
+            "A custom esplora backend url where to fetch the bitcoin data",
             false,
         )
         .add_rpc_method(
@@ -121,7 +131,10 @@ pub fn build_plugin() -> Plugin<PluginState> {
 }
 
 fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
-    let client: String = plugin.get_opt("satoshi-client").unwrap();
+    let client: String = plugin.get_opt("bitcoin-client").unwrap();
+    let esplora_url: Option<String> = plugin.get_opt("bitcoin-esplora-url").unwrap();
+    plugin.state.esplora_url = esplora_url;
+
     let conf = plugin.configuration.clone().unwrap();
     if let Err(err) = plugin.state.new_client(&client, &conf) {
         plugin.log(LogLevel::Debug, &format!("{err}"));
@@ -211,13 +224,5 @@ impl RPCCommand<PluginState> for SendRawTransactionRPC {
         plugin.log(LogLevel::Info, &format!("cln request: {request}"));
         let request: SendRawTx = serde_json::from_value(request)?;
         client.sync_send_raw_transaction(plugin, &request.tx, request.allowhighfees)
-    }
-}
-
-impl Clone for PluginState {
-    fn clone(&self) -> Self {
-        Self {
-            client: self.client.clone(),
-        }
     }
 }
