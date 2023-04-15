@@ -11,7 +11,7 @@ pub trait FolgoreBackend<T: Clone> {
     /// - `headercount` (number), the number of fetched block headers
     /// - `blockcount` (number), the number of fetched block body
     /// - `ibd` (bool), whether the backend is performing initial block download
-    fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, PluginError>;
+    fn sync_chain_info(&self, _: &mut Plugin<T>, _: Option<u64>) -> Result<Value, PluginError>;
 
     /// Polled by lightningd to get the current feerate, all values must
     /// be passed in sat/kVB.

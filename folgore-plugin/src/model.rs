@@ -17,3 +17,8 @@ pub(crate) struct SendRawTx {
     pub(crate) tx: String,
     pub(crate) allowhighfees: bool,
 }
+
+#[derive(Deserialize, Serialize)]
+pub(crate) struct GetChainInfo {
+    pub(crate) height: Option<u64>,
+}
