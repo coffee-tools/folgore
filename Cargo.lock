@@ -241,6 +241,54 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "folgore-common"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_hashes 0.12.0",
+ "clightningrpc-plugin",
+ "serde_json",
+]
+
+[[package]]
+name = "folgore-esplora"
+version = "0.1.0"
+dependencies = [
+ "clightningrpc-common",
+ "clightningrpc-plugin",
+ "esplora-client",
+ "folgore-common",
+ "log",
+ "serde_json",
+]
+
+[[package]]
+name = "folgore-nakamoto"
+version = "0.1.0"
+dependencies = [
+ "clightningrpc-common",
+ "clightningrpc-plugin",
+ "folgore-common",
+ "nakamoto-client",
+ "nakamoto-common",
+ "nakamoto-net-poll",
+ "nakamoto-p2p",
+ "serde_json",
+]
+
+[[package]]
+name = "folgore_plugin"
+version = "0.1.0"
+dependencies = [
+ "clightningrpc-common",
+ "clightningrpc-plugin",
+ "folgore-common",
+ "folgore-esplora",
+ "folgore-nakamoto",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -837,54 +885,6 @@ name = "ryu"
 version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
-
-[[package]]
-name = "satoshi-common"
-version = "0.1.0"
-dependencies = [
- "bitcoin_hashes 0.12.0",
- "clightningrpc-plugin",
- "serde_json",
-]
-
-[[package]]
-name = "satoshi-esplora"
-version = "0.1.0"
-dependencies = [
- "clightningrpc-common",
- "clightningrpc-plugin",
- "esplora-client",
- "log",
- "satoshi-common",
- "serde_json",
-]
-
-[[package]]
-name = "satoshi-nakamoto"
-version = "0.1.0"
-dependencies = [
- "clightningrpc-common",
- "clightningrpc-plugin",
- "nakamoto-client",
- "nakamoto-common",
- "nakamoto-net-poll",
- "nakamoto-p2p",
- "satoshi-common",
- "serde_json",
-]
-
-[[package]]
-name = "satoshi_plugin"
-version = "0.1.0"
-dependencies = [
- "clightningrpc-common",
- "clightningrpc-plugin",
- "satoshi-common",
- "satoshi-esplora",
- "satoshi-nakamoto",
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "schannel"

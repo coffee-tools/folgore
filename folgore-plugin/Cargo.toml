@@ -1,13 +1,13 @@
 [package]
-name = "satoshi_plugin"
+name = "folgore_plugin"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 clightningrpc-common = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api" }
 clightningrpc-plugin = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api" }
-satoshi-common = { path = "../satoshi-common" }
-satoshi-nakamoto = { path = "../satoshi-nakamoto" }
-satoshi-esplora = { path = "../satoshi-esplora" }
+folgore-common = { path = "../folgore-common" }
+folgore-nakamoto = { path = "../folgore-nakamoto" }
+folgore-esplora = { path = "../folgore-esplora" }
 serde = "1.0.159"
 serde_json = "1.0.95"
