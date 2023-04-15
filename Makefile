@@ -18,3 +18,6 @@ example:
 
 clean:
 	$(CC) clean
+
+coffee:
+	$(CC) build --release
