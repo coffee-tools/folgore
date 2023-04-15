@@ -1,0 +1,8 @@
+---
+plugin:
+  name: folgore
+  version: 0.0.1
+  lang: rust
+  install: |
+    make coffee
+  main: target/release/folgore_plugin
