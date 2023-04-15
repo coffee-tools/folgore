@@ -1,10 +1,15 @@
-//! Future client implementation for nakamoto
-
+//! Backland client implementation for nakamoto
 use std::cell::Cell;
-use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::net::TcpStream;
+use std::thread::JoinHandle;
 
+use serde_json::{json, Value};
+
+use clightningrpc_common::json_utils;
+use clightningrpc_plugin::error;
+use clightningrpc_plugin::errors::PluginError;
+use clightningrpc_plugin::plugin::Plugin;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
 pub use nakamoto_client::Config;
@@ -12,24 +17,18 @@ pub use nakamoto_client::{Client, Error, Event, Network};
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::bitcoin::Txid;
 use nakamoto_common::bitcoin_hashes::hex::{FromHex, ToHex};
-use nakamoto_common::block::{BlockHash, Height, Transaction};
+use nakamoto_common::block::{Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
 use nakamoto_p2p::fsm::fees::FeeEstimate;
-use serde_json::{json, Value};
-
-use clightningrpc_common::json_utils;
-use clightningrpc_plugin::error;
-use clightningrpc_plugin::errors::PluginError;
-use clightningrpc_plugin::plugin::Plugin;
 
 use satoshi_common::client::SatoshiBackend;
 use satoshi_common::utils::{bitcoin_hashes, hex};
 
-#[derive(Clone)]
 pub struct Nakamoto {
     network: Network,
     handler: nakamoto_client::Handle<Waker>,
     current_height: Cell<Option<Height>>,
+    worker: Option<JoinHandle<Result<(), Error>>>,
 }
 
 impl Nakamoto {
@@ -37,12 +36,12 @@ impl Nakamoto {
         let nakamoto = Client::<Reactor<TcpStream>>::new()?;
         let handler = nakamoto.handle();
         let network = config.network;
-        // FIXME: join this later
-        let _worker = std::thread::spawn(|| nakamoto.run(config));
+        let worker = std::thread::spawn(|| nakamoto.run(config));
         let client = Nakamoto {
             handler,
             network,
             current_height: Cell::new(None),
+            worker: Some(worker),
         };
 
         Ok(client)
@@ -75,11 +74,15 @@ impl Nakamoto {
             "max_acceptable": null,
         }))
     }
+}
 
-    // FIXME: return the correct error
-    pub fn stop(self) -> Result<(), Error> {
-        self.handler.shutdown()?;
-        Ok(())
+impl Drop for Nakamoto {
+    fn drop(&mut self) {
+        let _ = self.handler.clone().shutdown();
+        let Some(worker) = self.worker.take() else {
+            return;
+        };
+        let _ = worker.join();
     }
 }
 
@@ -132,7 +135,6 @@ impl<T: Clone> SatoshiBackend<T> for Nakamoto {
                     Network::Signet => "signet",
                 };
                 json_utils::add_str(&mut resp, "chain", network);
-
                 // FIXME: need to be supported
                 json_utils::add_bool(&mut resp, "ibd", false);
                 Ok(resp)
