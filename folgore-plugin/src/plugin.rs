@@ -132,7 +132,11 @@ pub fn build_plugin() -> Plugin<PluginState> {
 fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     let client: String = plugin.get_opt("bitcoin-client").unwrap();
     let esplora_url: Option<String> = plugin.get_opt("bitcoin-esplora-url").unwrap();
-    plugin.state.esplora_url = esplora_url;
+    if let Some(url) = esplora_url {
+        if !url.trim().is_empty() {
+            plugin.state.esplora_url = Some(url.trim().to_string());
+        }
+    }
 
     let conf = plugin.configuration.clone().unwrap();
     if let Err(err) = plugin.state.new_client(&client, &conf) {
