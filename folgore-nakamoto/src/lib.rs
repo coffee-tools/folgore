@@ -21,8 +21,8 @@ use nakamoto_common::block::{Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
 use nakamoto_p2p::fsm::fees::FeeEstimate;
 
-use satoshi_common::client::SatoshiBackend;
-use satoshi_common::utils::{bitcoin_hashes, hex};
+use folgore_common::client::FolgoreBackend;
+use folgore_common::utils::{bitcoin_hashes, hex};
 
 pub struct Nakamoto {
     network: Network,
@@ -90,7 +90,7 @@ fn from<T: Display>(err: T) -> PluginError {
     error!("{err}")
 }
 
-impl<T: Clone> SatoshiBackend<T> for Nakamoto {
+impl<T: Clone> FolgoreBackend<T> for Nakamoto {
     fn sync_block_by_height(&self, _p: &mut Plugin<T>, height: u64) -> Result<Value, PluginError> {
         let mut response = json_utils::init_payload();
         let header = self.handler.get_block_by_height(height).unwrap();

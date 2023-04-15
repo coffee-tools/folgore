@@ -9,10 +9,10 @@ use clightningrpc_plugin::error;
 use clightningrpc_plugin::errors::PluginError;
 use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
 use esplora_client::{deserialize, serialize};
-
 use esplora_client::{BlockingClient, Builder};
-use satoshi_common::client::SatoshiBackend;
-use satoshi_common::utils::{bitcoin_hashes, hex};
+
+use folgore_common::client::FolgoreBackend;
+use folgore_common::utils::{bitcoin_hashes, hex};
 
 #[derive(Clone)]
 enum Network {
@@ -109,7 +109,7 @@ impl<'a> std::fmt::LowerHex for ByteBuf<'a> {
     }
 }
 
-impl<T: Clone> SatoshiBackend<T> for Esplora {
+impl<T: Clone> FolgoreBackend<T> for Esplora {
     fn sync_block_by_height(
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,

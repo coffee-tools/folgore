@@ -1,5 +1,5 @@
 [package]
-name = "satoshi-nakamoto"
+name = "folgore-nakamoto"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,7 +9,7 @@ nakamoto-client = { git = "https://github.com/vincenzopalazzo/nakamoto", branch 
 nakamoto-net-poll = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model-fixes"  }
 nakamoto-p2p = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model-fixes"  }
 nakamoto-common = { git = "https://github.com/vincenzopalazzo/nakamoto", branch = "macros/client_model-fixes"  }
-satoshi-common = { path = "../satoshi-common" }
+folgore-common = { path = "../folgore-common" }
 clightningrpc-common = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api" }
 clightningrpc-plugin = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/api" }
 serde_json = "1.0"

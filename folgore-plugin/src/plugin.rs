@@ -9,10 +9,9 @@ use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
 use serde_json::{json, Value};
 
-use satoshi_esplora::Esplora;
-use satoshi_nakamoto::{Config, Nakamoto, Network};
-
-use satoshi_common::client::SatoshiBackend;
+use folgore_common::client::FolgoreBackend;
+use folgore_esplora::Esplora;
+use folgore_nakamoto::{Config, Nakamoto, Network};
 
 use crate::model::{BlockByHeight, GetUTxo, SendRawTx};
 
@@ -39,7 +38,7 @@ impl TryFrom<&str> for ClientType {
 
 #[derive(Clone)]
 pub struct PluginState {
-    pub(crate) client: Option<Arc<dyn SatoshiBackend<PluginState>>>,
+    pub(crate) client: Option<Arc<dyn FolgoreBackend<PluginState>>>,
     pub(crate) esplora_url: Option<String>,
 }
 

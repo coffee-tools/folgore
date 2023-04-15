@@ -1,8 +1,8 @@
 [workspace]
 members = [
-        "satoshi-common",
-        "satoshi-nakamoto",
-        "satoshi-esplora",
-        "satoshi-plugin",
+        "folgore-common",
+        "folgore-nakamoto",
+        "folgore-esplora",
+        "folgore-plugin",
 ]
 resolver = "2"
