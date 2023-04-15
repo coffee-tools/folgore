@@ -13,7 +13,7 @@ use folgore_common::client::FolgoreBackend;
 use folgore_esplora::Esplora;
 use folgore_nakamoto::{Config, Nakamoto, Network};
 
-use crate::model::{BlockByHeight, GetUTxo, SendRawTx};
+use crate::model::{BlockByHeight, GetChainInfo, GetUTxo, SendRawTx};
 
 pub(crate) enum ClientType {
     Nakamoto,
@@ -150,11 +150,17 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
 struct GetChainInfoRPC {}
 
 impl RPCCommand<PluginState> for GetChainInfoRPC {
-    fn call<'c>(&self, plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, PluginError> {
+    fn call<'c>(
+        &self,
+        plugin: &mut Plugin<PluginState>,
+        request: Value,
+    ) -> Result<Value, PluginError> {
         plugin.log(LogLevel::Debug, "call get chain info");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
-        let result = client.sync_chain_info(plugin);
+        plugin.log(LogLevel::Info, &format!("cln request {request}"));
+        let request: GetChainInfo = serde_json::from_value(request)?;
+        let result = client.sync_chain_info(plugin, request.height);
         plugin.log(LogLevel::Debug, &format!("{:?}", result));
         result
     }
@@ -183,7 +189,7 @@ impl RPCCommand<PluginState> for GetRawBlockByHeightRPC {
         plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
-        plugin.log(LogLevel::Debug, "call get chain info");
+        plugin.log(LogLevel::Debug, "call get block by height");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
         plugin.log(LogLevel::Info, &format!("cln request {request}"));

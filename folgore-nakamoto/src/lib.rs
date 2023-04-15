@@ -4,6 +4,7 @@ use std::fmt::Display;
 use std::net::TcpStream;
 use std::thread::JoinHandle;
 
+use clightningrpc_plugin::types::LogLevel;
 use serde_json::{json, Value};
 
 use clightningrpc_common::json_utils;
@@ -93,7 +94,7 @@ fn from<T: Display>(err: T) -> PluginError {
 impl<T: Clone> FolgoreBackend<T> for Nakamoto {
     fn sync_block_by_height(&self, _p: &mut Plugin<T>, height: u64) -> Result<Value, PluginError> {
         let mut response = json_utils::init_payload();
-        let header = self.handler.get_block_by_height(height).unwrap();
+        let header = self.handler.get_block_by_height(height).map_err(from)?;
         let blk_chan = self.handler.blocks();
         if let None = header {
             return Ok(json!({
@@ -121,9 +122,26 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
         Ok(response)
     }
 
-    fn sync_chain_info(&self, _: &mut Plugin<T>) -> Result<Value, PluginError> {
+    fn sync_chain_info(
+        &self,
+        plugin: &mut Plugin<T>,
+        known_height: Option<u64>,
+    ) -> Result<Value, PluginError> {
         match self.handler.get_tip() {
-            Ok(Tip { height, .. }) => {
+            Ok(Tip { mut height, .. }) => {
+                let mut is_sync = true;
+                if Some(height) <= known_height {
+                    while let Err(err) = self.handler.wait_for_height(known_height.unwrap()) {
+                        plugin.log(LogLevel::Info, &format!("Waiting for block {height}...."));
+                        plugin.log(
+                            LogLevel::Debug,
+                            &format!("while waiting the block we get an error {err}"),
+                        )
+                    }
+                    height = known_height.unwrap();
+                } else {
+                    is_sync = false;
+                }
                 let mut resp = json_utils::init_payload();
                 let height: i64 = height.try_into().unwrap();
                 json_utils::add_number(&mut resp, "headercount", height);
@@ -135,8 +153,7 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
                     Network::Signet => "signet",
                 };
                 json_utils::add_str(&mut resp, "chain", network);
-                // FIXME: need to be supported
-                json_utils::add_bool(&mut resp, "ibd", false);
+                json_utils::add_bool(&mut resp, "ibd", is_sync);
                 Ok(resp)
             }
             Err(err) => Err(error!("{err}")),

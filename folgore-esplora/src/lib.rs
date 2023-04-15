@@ -150,6 +150,7 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
     fn sync_chain_info(
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        _: Option<u64>,
     ) -> Result<serde_json::Value, PluginError> {
         let current_height = self.client.get_height().map_err(from)?;
         info!("blockchain height: {current_height}");
