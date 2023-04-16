@@ -211,7 +211,7 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
             // estimated by nakamto
             //
             // FIXME: is this a good assumtion?
-            fee_map.insert(diff, fees.high * 10_000_000);
+            fee_map.insert(diff, fees.high);
         }
         plugin.log(
             LogLevel::Debug,
