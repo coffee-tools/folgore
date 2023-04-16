@@ -1,10 +1,12 @@
 //! Backland client implementation for nakamoto
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::net::TcpStream;
 use std::thread::JoinHandle;
 
 use clightningrpc_plugin::types::LogLevel;
+use nakamoto_client::FeeRate;
 use serde_json::{json, Value};
 
 use clightningrpc_common::json_utils;
@@ -20,10 +22,19 @@ use nakamoto_common::bitcoin::Txid;
 use nakamoto_common::bitcoin_hashes::hex::{FromHex, ToHex};
 use nakamoto_common::block::{Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
-use nakamoto_p2p::fsm::fees::FeeEstimate;
 
 use folgore_common::client::FolgoreBackend;
 use folgore_common::utils::{bitcoin_hashes, hex};
+
+#[derive(Clone)]
+struct FeePriority(u16, &'static str);
+
+static FEE_RATES: [FeePriority; 4] = [
+    FeePriority(2, "CONSERVATIVE"),
+    FeePriority(6, "CONSERVATIVE"),
+    FeePriority(12, "CONSERVATIVE"),
+    FeePriority(100, "CONSERVATIVE"),
+];
 
 pub struct Nakamoto {
     network: Network,
@@ -48,18 +59,44 @@ impl Nakamoto {
         Ok(client)
     }
 
-    fn build_estimate_fees(&self, fees: FeeEstimate) -> Result<Value, PluginError> {
+    fn urgent_fee(&self, fees: &HashMap<u64, FeeRate>) -> Option<FeeRate> {
+        fees.get(&6).copied()
+    }
+
+    fn hightest_fee(&self, fees: &HashMap<u64, FeeRate>) -> Option<FeeRate> {
+        fees.get(&2).copied()
+    }
+
+    fn normal_fee(&self, fees: &HashMap<u64, FeeRate>) -> Option<FeeRate> {
+        fees.get(&12).copied()
+    }
+
+    fn slow_fee(&self, fees: &HashMap<u64, FeeRate>) -> Option<FeeRate> {
+        fees.get(&100).copied()
+    }
+
+    fn build_estimate_fees(&self, fees: &HashMap<u64, FeeRate>) -> Result<Value, PluginError> {
         let mut resp = json_utils::init_payload();
-        let medium: i64 = fees.median.try_into().unwrap();
-        let low: i64 = fees.low.try_into().unwrap();
-        json_utils::add_number(&mut resp, "opening", medium);
-        json_utils::add_number(&mut resp, "mutual_close", low);
-        json_utils::add_number(&mut resp, "unilateral_close", low);
-        json_utils::add_number(&mut resp, "delayed_to_us", low);
-        json_utils::add_number(&mut resp, "htlc_resolution", low);
-        json_utils::add_number(&mut resp, "penalty", low);
-        json_utils::add_number(&mut resp, "min_acceptable", low);
-        json_utils::add_number(&mut resp, "max_acceptable", medium);
+        let Some(high) = self.hightest_fee(fees) else {
+            return Err(error!("highest fee not found"));
+        };
+        let Some(urgent) = self.urgent_fee(fees) else {
+            return Err(error!("urgent fee not found"));
+        };
+        let Some(normal) = self.normal_fee(fees) else {
+            return Err(error!("normal fee not found"));
+        };
+        let Some(slow) = self.slow_fee(fees) else {
+            return Err(error!("slow fee not found"));
+        };
+        json_utils::add_number(&mut resp, "opening", normal as i64);
+        json_utils::add_number(&mut resp, "mutual_close", slow as i64);
+        json_utils::add_number(&mut resp, "unilateral_close", urgent as i64);
+        json_utils::add_number(&mut resp, "delayed_to_us", normal as i64);
+        json_utils::add_number(&mut resp, "htlc_resolution", urgent as i64);
+        json_utils::add_number(&mut resp, "penalty", normal as i64);
+        json_utils::add_number(&mut resp, "min_acceptable", (slow / 2) as i64);
+        json_utils::add_number(&mut resp, "max_acceptable", (high * 2) as i64);
         Ok(resp)
     }
 
@@ -160,14 +197,30 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
         }
     }
 
-    fn sync_estimate_fees(&self, _: &mut Plugin<T>) -> Result<Value, PluginError> {
+    fn sync_estimate_fees(&self, plugin: &mut Plugin<T>) -> Result<Value, PluginError> {
         let Some(height) = self.current_height.get() else {
             return self.null_estimate_fees();
         };
-        let Some(fees) = self.handler.estimate_feerate(height - 6).map_err(from)? else {
+        let mut fee_map = HashMap::new();
+        for FeePriority(block, _) in FEE_RATES.to_vec() {
+            let diff = block as u64;
+            let Ok(Some(fees)) = self.handler.estimate_feerate(height - diff) else {
+                continue;
+            };
+            // We try to stay in a good range, so we take the high fee for the block
+            // estimated by nakamto
+            //
+            // FIXME: is this a good assumtion?
+            fee_map.insert(diff, fees.high * 10_000_000);
+        }
+        plugin.log(
+            LogLevel::Debug,
+            &format!("fee estimated from nakamoto {:?}", fee_map),
+        );
+        if fee_map.len() != FEE_RATES.len() {
             return self.null_estimate_fees();
-        };
-        self.build_estimate_fees(fees)
+        }
+        self.build_estimate_fees(&fee_map)
     }
 
     fn sync_get_utxo(&self, _: &mut Plugin<T>, txid: &str, idx: u64) -> Result<Value, PluginError> {
