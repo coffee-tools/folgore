@@ -227,7 +227,7 @@ impl RPCCommand<PluginState> for SendRawTransactionRPC {
         plugin: &mut Plugin<PluginState>,
         request: Value,
     ) -> Result<Value, PluginError> {
-        plugin.log(LogLevel::Debug, "call get chain info");
+        plugin.log(LogLevel::Debug, "call send raw transaction");
         let mut plg = plugin.to_owned();
         let client = plg.state.client.as_mut().unwrap();
         plugin.log(LogLevel::Info, &format!("cln request: {request}"));
