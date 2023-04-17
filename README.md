@@ -55,6 +55,36 @@ make a customization, these are some configuration options:
    - `esplora`: Rest API to support esplora like backend,
 - `bitcoin-esplora-url`: The URL of the esplora server, by default using the Blockstream API
 
+## BIP 157 support
+
+This plugin allow the support of the BIP 157 [Client Side Block Filtering](https://github.com/bitcoin/bips/blob/master/bip-0157.mediawiki) in core lightning
+in a alpha mode.
+
+In fact, the plugin is build on top of [nakamoto](https://github.com/cloudhead/nakamoto) with a bunch of fixes that are 
+proposed as PR in the main repository, in addition the current version of the plugin is build on top of an 
+core lightning RFC PR [#6181](https://github.com/ElementsProject/lightning/pull/6181), so the support the the 
+BIP 157 is very experimental and there is still work to do.
+
+However, it is the perfect time to stress test the plugin and report not known bugs, so please
+if you want test the BIP 157 support consider to install the plugin with one of the 
+previous method, and then run `lightnind` with the option `bitcoin-client=nakamoto` and then
+report any bugs that you find with an [issue](https://github.com/coffee-tools/folgore/issues).
+
+In addition, if you are running the plugin with a not clean node, you should run nakamoto and wait 
+that it will sync the initial information for the chain otherwise core lightning will crash because 
+nakamoto return an older block height (this issue is fixed with the PR #6181 on core lightning).
+
+To run nakamoto you can run the following command 
+
+``` bash
+git clone https://github.com/vincenzopalazzo/nakamoto.git && cd nakamoto
+git checkout macros/client_model-fixes
+cd node
+cargo run -- --log debug --testnet
+```
+
+An than lets wait a while that nakamoto will sync with the network.
+
 ## License
 
 <div align="center">
