@@ -29,7 +29,7 @@ installed](https://www.rust-lang.org/tools/install)
 
 ```
 >> make
-cp ./target/debug/satoshi_plugin /home/<user>/.lightning/plugin
+cp ./target/debug/folgore_plugin /home/<user>/.lightning/plugin
 ```
 
 ### With a plugin manager
