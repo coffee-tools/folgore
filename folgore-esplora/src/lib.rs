@@ -211,8 +211,7 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         if let Some(tx) = utxo {
             let output: TxOut = tx.output[idx as usize].clone();
             json_utils::add_number(&mut resp, "amount", output.value.try_into().map_err(from)?);
-            // FIXME: the to string here is what we are looking for?
-            json_utils::add_str(&mut resp, "script", &output.script_pubkey.to_string());
+            json_utils::add_str(&mut resp, "script", &format!("{:x}", output.script_pubkey));
             return Ok(resp);
         }
         // FIXME: return a null response, this requires some hep from the cln API side
