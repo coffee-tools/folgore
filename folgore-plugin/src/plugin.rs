@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use clightningrpc_plugin_macros::rpc_method;
+use folgore_bitcoind::BitcoinCore;
 use serde_json::{json, Value};
 
 use clightningrpc_plugin::commands::{types::CLNConf, RPCCommand};
@@ -21,6 +22,7 @@ use crate::model::{BlockByHeight, GetChainInfo, GetUTxo, SendRawTx};
 pub(crate) enum ClientType {
     Nakamoto,
     Esplora,
+    BitcoinCore,
 }
 
 impl TryFrom<&str> for ClientType {
@@ -30,11 +32,8 @@ impl TryFrom<&str> for ClientType {
         match value {
             "nakamoto" => Ok(Self::Nakamoto),
             "esplora" => Ok(Self::Esplora),
-            _ => Err(PluginError::new(
-                -1,
-                &format!("client {value} not supported"),
-                None,
-            )),
+            "bitcoind" => Ok(Self::BitcoinCore),
+            _ => Err(error!("client {value} not supported")),
         }
     }
 }
@@ -43,6 +42,9 @@ impl TryFrom<&str> for ClientType {
 pub struct PluginState {
     pub(crate) client: Option<Arc<dyn FolgoreBackend<PluginState>>>,
     pub(crate) esplora_url: Option<String>,
+    pub(crate) core_url: Option<String>,
+    pub(crate) core_user: Option<String>,
+    pub(crate) core_pass: Option<String>,
 }
 
 impl PluginState {
@@ -50,6 +52,9 @@ impl PluginState {
         PluginState {
             client: None,
             esplora_url: None,
+            core_url: None,
+            core_pass: None,
+            core_user: None,
         }
     }
 
@@ -66,6 +71,24 @@ impl PluginState {
             ClientType::Esplora => {
                 // FIXME: check if there is the proxy enabled to pass the tor addrs
                 let client = Esplora::new(&conf.network, self.esplora_url.to_owned())?;
+                self.client = Some(Arc::new(client));
+                Ok(())
+            }
+            ClientType::BitcoinCore => {
+                let client = BitcoinCore::new(
+                    &self
+                        .core_url
+                        .clone()
+                        .ok_or(error!("bitcoin url not specified"))?,
+                    &self
+                        .core_user
+                        .clone()
+                        .ok_or(error!("bitcoin user not specified"))?,
+                    &self
+                        .core_url
+                        .clone()
+                        .ok_or(error!("bitcoin pass not specied"))?,
+                )?;
                 self.client = Some(Arc::new(client));
                 Ok(())
             }
@@ -116,16 +139,38 @@ pub fn build_plugin() -> Plugin<PluginState> {
 
 fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     let client: String = plugin.get_opt("bitcoin-client").unwrap();
-    let esplora_url: Option<String> = plugin.get_opt("bitcoin-esplora-url").unwrap();
+    let esplora_url: Option<String> = plugin.get_opt("bitcoin-esplora-url").ok();
     if let Some(url) = esplora_url {
         if !url.trim().is_empty() {
             plugin.state.esplora_url = Some(url.trim().to_string());
         }
     }
 
+    if let Some(url) = plugin.get_opt::<String>("bitcoin-rpcurl").ok() {
+        if !url.trim().is_empty() {
+            plugin.state.core_url = Some(url);
+        }
+    }
+
+    if let Some(user) = plugin.get_opt::<String>("bitcoin-rpcurl").ok() {
+        if !user.trim().is_empty() {
+            plugin.state.core_user = Some(user);
+        }
+    }
+
+    if let Some(pass) = plugin.get_opt::<String>("bitcoin-rpcpassword").ok() {
+        if !pass.trim().is_empty() {
+            plugin.state.core_pass = Some(pass);
+        }
+    }
+
+    // SAFETY: the configuration should be always not null otherwise
+    // there is a bug inside the plugin API
     let conf = plugin.configuration.clone().unwrap();
     if let Err(err) = plugin.state.new_client(&client, &conf) {
-        plugin.log(LogLevel::Debug, &format!("{err}"));
+        return json!({
+            "disable": format!("{err}"),
+        });
     };
     json!({})
 }

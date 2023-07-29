@@ -4,6 +4,7 @@ members = [
         "folgore-nakamoto",
         "folgore-esplora",
         "folgore-plugin",
+        "folgore-bitcoind",
 ]
 resolver = "2"
 

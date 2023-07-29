@@ -23,18 +23,9 @@ use nakamoto_common::bitcoin_hashes::hex::{FromHex, ToHex};
 use nakamoto_common::block::{Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
 
+use folgore_common::client::fee_estimator::{FeePriority, FEE_RATES};
 use folgore_common::client::FolgoreBackend;
 use folgore_common::utils::{bitcoin_hashes, hex};
-
-#[derive(Clone)]
-struct FeePriority(u16, &'static str);
-
-static FEE_RATES: [FeePriority; 4] = [
-    FeePriority(2, "CONSERVATIVE"),
-    FeePriority(6, "CONSERVATIVE"),
-    FeePriority(12, "CONSERVATIVE"),
-    FeePriority(100, "CONSERVATIVE"),
-];
 
 pub struct Nakamoto {
     network: Network,
