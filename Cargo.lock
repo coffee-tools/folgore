@@ -124,8 +124,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "clightningrpc-common"
-version = "0.3.0-beta.3"
-source = "git+https://github.com/laanwj/cln4rust.git?branch=macros/api#8823c6193e2313615dcaa21149a3400c947b4faf"
+version = "0.3.0-beta.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6dc4030d1ff7bf3c8705b48c8fd73319a2c7cfccae086399c6b3a6c07026cf5a"
 dependencies = [
  "serde",
  "serde_json",
@@ -133,13 +134,32 @@ dependencies = [
 
 [[package]]
 name = "clightningrpc-plugin"
-version = "0.3.0-beta.7"
-source = "git+https://github.com/laanwj/cln4rust.git?branch=macros/api#8823c6193e2313615dcaa21149a3400c947b4faf"
+version = "0.3.0-beta.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9807dd1f895fadfc9fe8e9f355cabbccf994d4c7b0e3a921726679faa3e2713d"
 dependencies = [
  "clightningrpc-common",
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "clightningrpc-plugin-macros"
+version = "0.3.0-beta.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef81a4e59115a4ed470ea218793a76fa67d9974e6fdf9b93cb1c693130eb7755"
+dependencies = [
+ "clightningrpc-plugin",
+ "convert_case",
+ "kproc-parser",
+ "serde_json",
+]
+
+[[package]]
+name = "convert_case"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb4a24b1aaf0fd0ce8b45161144d6f42cd91677fd5940fd431183eb023b3a2b8"
 
 [[package]]
 name = "core-foundation"
@@ -300,6 +320,7 @@ version = "0.1.0"
 dependencies = [
  "clightningrpc-common",
  "clightningrpc-plugin",
+ "clightningrpc-plugin-macros",
  "folgore-common",
  "folgore-esplora",
  "folgore-nakamoto",
@@ -538,6 +559,12 @@ checksum = "c5f195fe497f702db0f318b07fdd68edb16955aed830df8363d837542f8f935a"
 dependencies = [
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "kproc-parser"
+version = "0.0.1-beta.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a3c5d81e3af35bb269378a933889f7f45c884bdf820a9c268711035430f3f7"
 
 [[package]]
 name = "lazy_static"

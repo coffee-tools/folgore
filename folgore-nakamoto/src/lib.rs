@@ -225,7 +225,11 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
 
     fn sync_get_utxo(&self, _: &mut Plugin<T>, txid: &str, idx: u64) -> Result<Value, PluginError> {
         let txid = Txid::from_hex(txid).unwrap();
-        let Some(utxo) = self.handler.get_utxo(&txid, idx.try_into().unwrap()).map_err(from)? else {
+        let Some(utxo) = self
+            .handler
+            .get_utxo(&txid, idx.try_into().unwrap())
+            .map_err(from)?
+        else {
             return Ok(json!({
                 "amount": null,
                 "script": null,
