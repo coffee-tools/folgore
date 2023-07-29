@@ -21,6 +21,7 @@ use crate::model::{BlockByHeight, GetChainInfo, GetUTxo, SendRawTx};
 pub(crate) enum ClientType {
     Nakamoto,
     Esplora,
+    BitcoinCore,
 }
 
 impl TryFrom<&str> for ClientType {
@@ -30,11 +31,8 @@ impl TryFrom<&str> for ClientType {
         match value {
             "nakamoto" => Ok(Self::Nakamoto),
             "esplora" => Ok(Self::Esplora),
-            _ => Err(PluginError::new(
-                -1,
-                &format!("client {value} not supported"),
-                None,
-            )),
+            "bitcoind" => Ok(Self::BitcoinCore),
+            _ => Err(error!("client {value} not supported")),
         }
     }
 }
@@ -68,6 +66,9 @@ impl PluginState {
                 let client = Esplora::new(&conf.network, self.esplora_url.to_owned())?;
                 self.client = Some(Arc::new(client));
                 Ok(())
+            }
+            ClientType::BitcoinCore => {
+                unimplemented!()
             }
         }
     }

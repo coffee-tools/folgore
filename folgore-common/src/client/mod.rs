@@ -1,6 +1,7 @@
 //! Future client interface definition.
-use clightningrpc_plugin::{errors::PluginError, plugin::Plugin};
 use serde_json::Value;
+
+use clightningrpc_plugin::{errors::PluginError, plugin::Plugin};
 
 /// Future backend trait that implement an optional async and sync
 /// interface to work with a cln node that want access to a bitcoin

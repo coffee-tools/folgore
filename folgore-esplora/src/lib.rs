@@ -12,6 +12,7 @@ use esplora_client::{deserialize, serialize};
 use esplora_client::{BlockingClient, Builder};
 
 use folgore_common::client::FolgoreBackend;
+use folgore_common::utils::ByteBuf;
 use folgore_common::utils::{bitcoin_hashes, hex};
 
 #[derive(Clone)]
@@ -95,18 +96,6 @@ fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option
         }
     }
     None
-}
-
-// FIXME: put in some library somewhere!
-struct ByteBuf<'a>(&'a [u8]);
-
-impl<'a> std::fmt::LowerHex for ByteBuf<'a> {
-    fn fmt(&self, fmtr: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        for byte in self.0 {
-            fmtr.write_fmt(format_args!("{:02x}", byte))?;
-        }
-        Ok(())
-    }
 }
 
 impl<T: Clone> FolgoreBackend<T> for Esplora {
