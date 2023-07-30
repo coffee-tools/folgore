@@ -47,10 +47,12 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
             .client
             .get_blockchain_info()
             .map_err(|err| error!("{err}"))?;
+
         Ok(json::json!({
             "headercount": chaininfo.headers,
             "blockcount": chaininfo.blocks,
             "ibd": chaininfo.initial_block_download,
+            "chain": chaininfo.chain,
         }))
     }
 
