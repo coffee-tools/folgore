@@ -62,21 +62,23 @@ impl PluginState {
         }
     }
 
-    fn new_client(&mut self, client: &str, conf: &CLNConf) -> Result<(), PluginError> {
+    fn new_client(
+        &self,
+        client: &str,
+        conf: &CLNConf,
+    ) -> Result<Arc<dyn FolgoreBackend<PluginState>>, PluginError> {
         let client = ClientType::try_from(client)?;
         match client {
             ClientType::Nakamoto => {
                 let mut config = Config::default();
                 config.network = Network::from_str(&conf.network).unwrap();
                 let client = Nakamoto::new(config).map_err(|err| error!("{err}"))?;
-                self.client = Some(Arc::new(client));
-                Ok(())
+                Ok(Arc::new(client))
             }
             ClientType::Esplora => {
                 // FIXME: check if there is the proxy enabled to pass the tor addrs
                 let client = Esplora::new(&conf.network, self.esplora_url.to_owned())?;
-                self.client = Some(Arc::new(client));
-                Ok(())
+                Ok(Arc::new(client))
             }
             ClientType::BitcoinCore => {
                 let client = BitcoinCore::new(
@@ -93,8 +95,7 @@ impl PluginState {
                         .clone()
                         .ok_or(error!("bitcoin pass not specied"))?,
                 )?;
-                self.client = Some(Arc::new(client));
-                Ok(())
+                Ok(Arc::new(client))
             }
         }
     }
@@ -129,6 +130,13 @@ pub fn build_plugin() -> Plugin<PluginState> {
             "string",
             Some("esplora".to_owned()),
             "Set up the client to use",
+            false,
+        )
+        .add_opt(
+            "bitcoin-rpcurl",
+            "string",
+            None,
+            "Set up the Bitcoin RPC URL",
             false,
         )
         .add_opt(
@@ -178,19 +186,23 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     // SAFETY: the configuration should be always not null otherwise
     // there is a bug inside the plugin API
     let conf = plugin.configuration.clone().unwrap();
-    if let Err(err) = plugin.state.new_client(&client, &conf) {
+    let client = plugin.state.new_client(&client, &conf);
+    if let Err(err) = client {
         return json!({
             "disable": format!("{err}"),
         });
     };
+    plugin.state.client = client.ok();
 
     if let Some(fallback) = plugin.get_opt::<String>("bitcoin-fallback-client").ok() {
         if !fallback.trim().is_empty() {
-            if let Err(err) = plugin.state.new_client(&fallback, &conf) {
+            let client = plugin.state.new_client(&fallback, &conf);
+            if let Err(err) = client {
                 return json!({
                     "disable": format!("{err}"),
                 });
-            };
+            }
+            plugin.state.fallback = client.ok();
         }
     }
 
