@@ -91,7 +91,7 @@ impl PluginState {
                         .clone()
                         .ok_or(error!("bitcoin user not specified"))?,
                     &self
-                        .core_url
+                        .core_pass
                         .clone()
                         .ok_or(error!("bitcoin pass not specied"))?,
                 )?;
