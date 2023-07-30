@@ -129,7 +129,7 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
         }
         let utxo = utxo.unwrap();
         Ok(json::json!({
-            "script": utxo.script_pub_key.hex,
+            "script": String::from_utf8(utxo.script_pub_key.hex).map_err(|err| error!("{err}"))?,
             "amount": utxo.value.to_sat(),
         }))
     }
