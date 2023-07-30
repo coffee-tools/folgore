@@ -99,6 +99,10 @@ fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option
 }
 
 impl<T: Clone> FolgoreBackend<T> for Esplora {
+    fn kind(&self) -> folgore_common::client::BackendKind {
+        folgore_common::client::BackendKind::Esplora
+    }
+
     fn sync_block_by_height(
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,

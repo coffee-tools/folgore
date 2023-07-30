@@ -1,14 +1,48 @@
 //! Future client interface definition.
 pub mod fee_estimator;
 
+use std::fmt;
+
 use serde_json::Value;
 
+use clightningrpc_plugin::error;
 use clightningrpc_plugin::{errors::PluginError, plugin::Plugin};
+
+pub enum BackendKind {
+    Nakamoto,
+    Esplora,
+    BitcoinCore,
+}
+
+impl TryFrom<&str> for BackendKind {
+    type Error = PluginError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "nakamoto" => Ok(Self::Nakamoto),
+            "esplora" => Ok(Self::Esplora),
+            "bitcoind" => Ok(Self::BitcoinCore),
+            _ => Err(error!("client {value} not supported")),
+        }
+    }
+}
+
+impl fmt::Display for BackendKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Nakamoto => write!(f, "nakamoto"),
+            Self::Esplora => write!(f, "esplora"),
+            Self::BitcoinCore => write!(f, "bitcoind"),
+        }
+    }
+}
 
 /// Future backend trait that implement an optional async and sync
 /// interface to work with a cln node that want access to a bitcoin
 /// blockchain.
 pub trait FolgoreBackend<T: Clone> {
+    /// Return the Backend Kind
+    fn kind(&self) -> BackendKind;
     /// The plugin must respond to getchaininfo with the following fields:
     /// - `chain` (string), the network name as introduced in bip70
     /// - `headercount` (number), the number of fetched block headers

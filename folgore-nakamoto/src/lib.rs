@@ -120,6 +120,10 @@ fn from<T: Display>(err: T) -> PluginError {
 }
 
 impl<T: Clone> FolgoreBackend<T> for Nakamoto {
+    fn kind(&self) -> folgore_common::client::BackendKind {
+        folgore_common::client::BackendKind::Nakamoto
+    }
+
     fn sync_block_by_height(&self, _p: &mut Plugin<T>, height: u64) -> Result<Value, PluginError> {
         let mut response = json_utils::init_payload();
         let header = self.handler.get_block_by_height(height).map_err(from)?;
