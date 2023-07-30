@@ -38,6 +38,10 @@ impl BitcoinCore {
 }
 
 impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
+    fn kind(&self) -> folgore_common::client::BackendKind {
+        folgore_common::client::BackendKind::BitcoinCore
+    }
+
     fn sync_chain_info(
         &self,
         _: &mut plugin::Plugin<T>,

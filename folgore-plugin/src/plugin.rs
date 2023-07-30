@@ -13,30 +13,11 @@ use clightningrpc_plugin::types::LogLevel;
 use clightningrpc_plugin_macros::plugin;
 use clightningrpc_plugin_macros::rpc_method;
 
-use folgore_common::client::FolgoreBackend;
+use folgore_common::client::{BackendKind, FolgoreBackend};
 use folgore_esplora::Esplora;
 use folgore_nakamoto::{Config, Nakamoto, Network};
 
 use crate::model::{BlockByHeight, GetChainInfo, GetUTxo, SendRawTx};
-
-pub(crate) enum ClientType {
-    Nakamoto,
-    Esplora,
-    BitcoinCore,
-}
-
-impl TryFrom<&str> for ClientType {
-    type Error = PluginError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "nakamoto" => Ok(Self::Nakamoto),
-            "esplora" => Ok(Self::Esplora),
-            "bitcoind" => Ok(Self::BitcoinCore),
-            _ => Err(error!("client {value} not supported")),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct PluginState {
@@ -67,20 +48,20 @@ impl PluginState {
         client: &str,
         conf: &CLNConf,
     ) -> Result<Arc<dyn FolgoreBackend<PluginState>>, PluginError> {
-        let client = ClientType::try_from(client)?;
+        let client = BackendKind::try_from(client)?;
         match client {
-            ClientType::Nakamoto => {
+            BackendKind::Nakamoto => {
                 let mut config = Config::default();
                 config.network = Network::from_str(&conf.network).unwrap();
                 let client = Nakamoto::new(config).map_err(|err| error!("{err}"))?;
                 Ok(Arc::new(client))
             }
-            ClientType::Esplora => {
+            BackendKind::Esplora => {
                 // FIXME: check if there is the proxy enabled to pass the tor addrs
                 let client = Esplora::new(&conf.network, self.esplora_url.to_owned())?;
                 Ok(Arc::new(client))
             }
-            ClientType::BitcoinCore => {
+            BackendKind::BitcoinCore => {
                 let client = BitcoinCore::new(
                     &self
                         .core_url
@@ -235,7 +216,8 @@ fn get_chain_info(plugin: &mut Plugin<PluginState>, request: Value) -> Result<Va
             plugin.log(
                 LogLevel::Warn,
                 &format!(
-                    "client (TODO add the name) return an error: {}",
+                    "client `{}` return an error: {}",
+                    client.kind(),
                     result.clone().err().unwrap()
                 ),
             );
@@ -270,7 +252,8 @@ fn estimate_fees(plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, Pl
             plugin.log(
                 LogLevel::Warn,
                 &format!(
-                    "client (TODO add the name) return an error: {}",
+                    "client `{}` return an error: {}",
+                    client.kind(),
                     result.clone().err().unwrap()
                 ),
             );
@@ -310,7 +293,8 @@ fn get_raw_block_by_height(
             plugin.log(
                 LogLevel::Warn,
                 &format!(
-                    "client (TODO add the name) return an error: {}",
+                    "client `{}` return an error: {}",
+                    client.kind(),
                     result.clone().err().unwrap()
                 ),
             );
@@ -346,7 +330,8 @@ fn getutxout(plugin: &mut Plugin<PluginState>, request: Value) -> Result<Value, 
             plugin.log(
                 LogLevel::Warn,
                 &format!(
-                    "client (TODO add the name) return an error: {}",
+                    "client `{}` return an error: {}",
+                    client.kind(),
                     result.clone().err().unwrap()
                 ),
             );
@@ -387,7 +372,8 @@ fn send_rawtransaction(
             plugin.log(
                 LogLevel::Warn,
                 &format!(
-                    "client (TODO add the name) return an error: {}",
+                    "client `{}` return an error: {}",
+                    client.kind(),
                     result.clone().err().unwrap()
                 ),
             );
