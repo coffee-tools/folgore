@@ -58,6 +58,7 @@ make a customization, these are some configuration options:
 - `bitcoin-rpcurl`: The URL of bitcoin core (for now it support http only and not https)
 - `bitcoin-rpcuser`: Bitcoin core RPC user inside for authentication;
 - `bitcoin-rpcpassword`: Bitcoin core RPC password for authentication.
+- `bitcoin-fallback-client`: Bitcoin fallback client, in the case one of the client fails, the plugin use another backend for the request.
 
 ## BIP 157 support
 
