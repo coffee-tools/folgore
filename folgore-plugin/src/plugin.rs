@@ -41,20 +41,24 @@ impl TryFrom<&str> for ClientType {
 #[derive(Clone)]
 pub struct PluginState {
     pub(crate) client: Option<Arc<dyn FolgoreBackend<PluginState>>>,
+    pub(crate) fallback: Option<Arc<dyn FolgoreBackend<PluginState>>>,
     pub(crate) esplora_url: Option<String>,
     pub(crate) core_url: Option<String>,
     pub(crate) core_user: Option<String>,
     pub(crate) core_pass: Option<String>,
+    pub(crate) _retry_strategy: Option<String>,
 }
 
 impl PluginState {
     fn new() -> Self {
         PluginState {
             client: None,
+            fallback: None,
             esplora_url: None,
             core_url: None,
             core_pass: None,
             core_user: None,
+            _retry_strategy: None,
         }
     }
 
@@ -128,6 +132,13 @@ pub fn build_plugin() -> Plugin<PluginState> {
             false,
         )
         .add_opt(
+            "bitcoin-fallback-client",
+            "string",
+            Some("esplora".to_owned()),
+            "Set up the client to use in case of fallback client (by default `esplora`)",
+            false,
+        )
+        .add_opt(
             "bitcoin-esplora-url",
             "string",
             Some(String::new()),
@@ -172,6 +183,17 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
             "disable": format!("{err}"),
         });
     };
+
+    if let Some(fallback) = plugin.get_opt::<String>("bitcoin-fallback-client").ok() {
+        if !fallback.trim().is_empty() {
+            if let Err(err) = plugin.state.new_client(&fallback, &conf) {
+                return json!({
+                    "disable": format!("{err}"),
+                });
+            };
+        }
+    }
+
     json!({})
 }
 
@@ -182,10 +204,33 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
 fn get_chain_info(plugin: &mut Plugin<PluginState>, request: Value) -> Result<Value, PluginError> {
     plugin.log(LogLevel::Debug, "call get chain info");
     let mut plg = plugin.to_owned();
-    let client = plg.state.client.as_mut().unwrap();
+    let client = plg.state.client.as_mut().ok_or(error!(
+        "Client must be not null at this point, please report a bug"
+    ))?;
+    // FIXME: make this not null
+    let fallback = plg
+        .state
+        .fallback
+        .as_mut()
+        .ok_or(error!("Fallback must be not null"))?;
     plugin.log(LogLevel::Info, &format!("cln request {request}"));
     let request: GetChainInfo = serde_json::from_value(request)?;
-    let result = client.sync_chain_info(plugin, request.height);
+
+    let mut result: Result<Value, PluginError> = Err(error!("result undefined"));
+    for client in [client, fallback] {
+        result = client.sync_chain_info(plugin, request.height.clone());
+        let Ok(ref result) = result else {
+            plugin.log(
+                LogLevel::Warn,
+                &format!(
+                    "client (TODO add the name) return an error: {}",
+                    result.clone().err().unwrap()
+                ),
+            );
+            continue;
+        };
+        break;
+    }
     plugin.log(LogLevel::Debug, &format!("{:?}", result));
     result
 }
@@ -196,9 +241,31 @@ fn get_chain_info(plugin: &mut Plugin<PluginState>, request: Value) -> Result<Va
 )]
 fn estimate_fees(plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, PluginError> {
     plugin.log(LogLevel::Debug, "call estimate fee info");
-    let mut plg = plugin.to_owned();
-    let client = plg.state.client.as_mut().unwrap();
-    let result = client.sync_estimate_fees(plugin);
+    let client = plugin
+        .state
+        .client
+        .clone()
+        .ok_or(error!("client must be not null at this point"))?;
+    let fallback = plugin
+        .state
+        .fallback
+        .clone()
+        .ok_or(error!("fallback backend must be not null"))?;
+    let mut result: Result<Value, PluginError> = Err(error!("the result is null"));
+    for client in [client, fallback] {
+        result = client.sync_estimate_fees(plugin);
+        let Ok(ref result) = result else {
+            plugin.log(
+                LogLevel::Warn,
+                &format!(
+                    "client (TODO add the name) return an error: {}",
+                    result.clone().err().unwrap()
+                ),
+            );
+            continue;
+        };
+        break;
+    }
     plugin.log(LogLevel::Debug, &format!("{:?}", result));
     result
 }
@@ -212,11 +279,34 @@ fn get_raw_block_by_height(
     request: Value,
 ) -> Result<Value, PluginError> {
     plugin.log(LogLevel::Debug, "call get block by height");
-    let mut plg = plugin.to_owned();
-    let client = plg.state.client.as_mut().unwrap();
+    let client = plugin
+        .state
+        .client
+        .clone()
+        .ok_or(error!("Client must be null at this point"))?;
+    let fallback = plugin
+        .state
+        .fallback
+        .clone()
+        .ok_or(error!("Fallback must be not null at this point"))?;
     plugin.log(LogLevel::Info, &format!("cln request {request}"));
     let request: BlockByHeight = serde_json::from_value(request)?;
-    client.sync_block_by_height(plugin, request.height)
+    let mut result: Result<Value, PluginError> = Err(error!("result never init"));
+    for client in [client, fallback] {
+        result = client.sync_block_by_height(plugin, request.height);
+        let Ok(ref result) = result else {
+            plugin.log(
+                LogLevel::Warn,
+                &format!(
+                    "client (TODO add the name) return an error: {}",
+                    result.clone().err().unwrap()
+                ),
+            );
+            continue;
+        };
+        break;
+    }
+    result
 }
 
 #[rpc_method(
@@ -225,11 +315,33 @@ fn get_raw_block_by_height(
 )]
 fn getutxout(plugin: &mut Plugin<PluginState>, request: Value) -> Result<Value, PluginError> {
     plugin.log(LogLevel::Debug, "call get utxo");
-    let mut plg = plugin.to_owned();
-    let client = plg.state.client.as_mut().unwrap();
+    let client = plugin
+        .state
+        .client
+        .clone()
+        .ok_or(error!("Client must be not null at this point"))?;
+    let fallback = plugin
+        .state
+        .fallback
+        .clone()
+        .ok_or(error!("Fallback client must be not null at this point"))?;
     plugin.log(LogLevel::Info, &format!("cln request: {request}"));
     let request: GetUTxo = serde_json::from_value(request)?;
-    let result = client.sync_get_utxo(plugin, &request.txid, request.vout);
+    let mut result: Result<Value, PluginError> = Err(error!("result never init"));
+    for client in [client, fallback] {
+        result = client.sync_get_utxo(plugin, &request.txid, request.vout);
+        let Ok(ref result) = result else {
+            plugin.log(
+                LogLevel::Warn,
+                &format!(
+                    "client (TODO add the name) return an error: {}",
+                    result.clone().err().unwrap()
+                ),
+            );
+            continue;
+        };
+        break;
+    }
     plugin.log(LogLevel::Debug, &format!("{:?}", result));
     result
 }
@@ -243,9 +355,33 @@ fn send_rawtransaction(
     request: Value,
 ) -> Result<Value, PluginError> {
     plugin.log(LogLevel::Debug, "call send raw transaction");
-    let mut plg = plugin.to_owned();
-    let client = plg.state.client.as_mut().unwrap();
+    let client = plugin
+        .state
+        .client
+        .clone()
+        .ok_or(error!("Client must be not null at this point"))?;
+    let fallback = plugin
+        .state
+        .fallback
+        .clone()
+        .ok_or(error!("Fallback client must be not null at this point"))?;
     plugin.log(LogLevel::Info, &format!("cln request: {request}"));
     let request: SendRawTx = serde_json::from_value(request)?;
-    client.sync_send_raw_transaction(plugin, &request.tx, request.allowhighfees)
+
+    let mut result: Result<Value, PluginError> = Err(error!("result never init"));
+    for client in [client, fallback] {
+        result = client.sync_send_raw_transaction(plugin, &request.tx, request.allowhighfees);
+        let Ok(ref result) = result else {
+            plugin.log(
+                LogLevel::Warn,
+                &format!(
+                    "client (TODO add the name) return an error: {}",
+                    result.clone().err().unwrap()
+                ),
+            );
+            continue;
+        };
+        break;
+    }
+    result
 }
