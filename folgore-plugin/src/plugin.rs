@@ -2,7 +2,6 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use clightningrpc_plugin_macros::rpc_method;
 use folgore_bitcoind::BitcoinCore;
 use serde_json::{json, Value};
 
@@ -12,6 +11,7 @@ use clightningrpc_plugin::errors::PluginError;
 use clightningrpc_plugin::plugin::Plugin;
 use clightningrpc_plugin::types::LogLevel;
 use clightningrpc_plugin_macros::plugin;
+use clightningrpc_plugin_macros::rpc_method;
 
 use folgore_common::client::FolgoreBackend;
 use folgore_esplora::Esplora;
@@ -152,7 +152,7 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
         }
     }
 
-    if let Some(user) = plugin.get_opt::<String>("bitcoin-rpcurl").ok() {
+    if let Some(user) = plugin.get_opt::<String>("bitcoin-rpcuser").ok() {
         if !user.trim().is_empty() {
             plugin.state.core_user = Some(user);
         }

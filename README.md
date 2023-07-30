@@ -53,7 +53,11 @@ make a customization, these are some configuration options:
 - `bitcoin-client`: The client name that the plugin need to use, by default `esplora` but the following clients are supported:
    - `nakamoto`: Bitcoin node implementation with the BIP 157 support;
    - `esplora`: Rest API to support esplora like backend,
+   - `core`: Bitcoin Core implementation
 - `bitcoin-esplora-url`: The URL of the esplora server, by default using the Blockstream API
+- `bitcoin-rpcurl`: The URL of bitcoin core (for now it support http only and not https)
+- `bitcoin-rpcuser`: Bitcoin core RPC user inside for authentication;
+- `bitcoin-rpcpassword`: Bitcoin core RPC password for authentication.
 
 ## BIP 157 support
 
