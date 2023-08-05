@@ -4,6 +4,7 @@
 //! backend with the bitcoin core node.
 //!
 //! Author: Vincenzo Palazzo <vincenzopalazzo@member.fsf.org>
+#![deny(clippy::unwrap_used)]
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -87,7 +88,7 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
         _: &mut plugin::Plugin<T>,
     ) -> Result<json::Value, errors::PluginError> {
         let mut fee_map = HashMap::new();
-        for FeePriority(block, target) in FEE_RATES.to_vec() {
+        for FeePriority(block, target) in FEE_RATES.iter().cloned() {
             let diff = block as u64;
             let mode = match target {
                 "CONSERVATIVE" => EstimateMode::Conservative,
@@ -131,6 +132,9 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
                 "amount": null,
             }));
         }
+        // SAFETY: this is safe to unwrap because we check the wrong case before
+        // so this will never fails.
+        #[allow(clippy::unwrap_used)]
         let utxo = utxo.unwrap();
         Ok(json::json!({
             "script": String::from_utf8(utxo.script_pub_key.hex).map_err(|err| error!("{err}"))?,
@@ -150,7 +154,7 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
         let result = self.client.send_raw_transaction(&tx);
         Ok(json::json!({
            "success": result.is_ok(),
-            "errmsg": result.err().and_then(|err| Some(err.to_string())),
+            "errmsg": result.err().map(|err| err.to_string()),
         }))
     }
 }

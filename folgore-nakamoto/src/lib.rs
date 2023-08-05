@@ -1,8 +1,10 @@
 //! Backland client implementation for nakamoto
+#![deny(clippy::unwrap_used)]
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::net::TcpStream;
+use std::sync::Mutex;
 use std::thread::JoinHandle;
 
 use clightningrpc_plugin::types::LogLevel;
@@ -30,7 +32,7 @@ use folgore_common::utils::{bitcoin_hashes, hex};
 pub struct Nakamoto {
     network: Network,
     handler: nakamoto_client::Handle<Waker>,
-    current_height: Cell<Option<Height>>,
+    current_height: Mutex<Cell<Option<Height>>>,
     worker: Option<JoinHandle<Result<(), Error>>>,
 }
 
@@ -43,7 +45,7 @@ impl Nakamoto {
         let client = Nakamoto {
             handler,
             network,
-            current_height: Cell::new(None),
+            current_height: Mutex::new(Cell::new(None)),
             worker: Some(worker),
         };
 
@@ -128,26 +130,29 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
         let mut response = json_utils::init_payload();
         let header = self.handler.get_block_by_height(height).map_err(from)?;
         let blk_chan = self.handler.blocks();
-        if let None = header {
+        if header.is_none() {
             return Ok(json!({
                 "blockhash": null,
                 "block": null,
             }));
         }
 
-        let header = header.unwrap();
+        let header = header.ok_or(error!("header not found inside the block"))?;
         if let Err(err) = self.handler.request_block(&header.block_hash()) {
             return Err(error!("{err}"));
         }
 
-        self.current_height.set(Some(height.into()));
+        self.current_height
+            .lock()
+            .map_err(|err| error!("{err}"))?
+            .set(Some(height));
         json_utils::add_str(
             &mut response,
             "blockhash",
             header.block_hash().to_string().as_str(),
         );
 
-        let (blk, _) = blk_chan.recv().unwrap();
+        let (blk, _) = blk_chan.recv().map_err(|err| error!("{err}"))?;
         let serialize = serialize(&blk);
         let ser_str = serialize.as_slice().to_hex();
         json_utils::add_str(&mut response, "block", &ser_str);
@@ -163,19 +168,22 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
             Ok(Tip { mut height, .. }) => {
                 let mut is_sync = true;
                 if Some(height) <= known_height {
-                    while let Err(err) = self.handler.wait_for_height(known_height.unwrap()) {
+                    while let Err(err) = self
+                        .handler
+                        .wait_for_height(known_height.ok_or(error!("known height not found"))?)
+                    {
                         plugin.log(LogLevel::Info, &format!("Waiting for block {height}...."));
                         plugin.log(
                             LogLevel::Debug,
                             &format!("while waiting the block we get an error {err}"),
                         )
                     }
-                    height = known_height.unwrap();
+                    height = known_height.ok_or(error!("known height not found"))?;
                 } else {
                     is_sync = false;
                 }
                 let mut resp = json_utils::init_payload();
-                let height: i64 = height.try_into().unwrap();
+                let height: i64 = height.try_into().map_err(|err| error!("{err}"))?;
                 json_utils::add_number(&mut resp, "headercount", height);
                 json_utils::add_number(&mut resp, "blockcount", height);
                 let network = match self.network {
@@ -193,11 +201,16 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
     }
 
     fn sync_estimate_fees(&self, plugin: &mut Plugin<T>) -> Result<Value, PluginError> {
-        let Some(height) = self.current_height.get() else {
+        let Some(height) = self
+            .current_height
+            .lock()
+            .map_err(|err| error!("{err}"))?
+            .get()
+        else {
             return self.null_estimate_fees();
         };
         let mut fee_map = HashMap::new();
-        for FeePriority(block, _) in FEE_RATES.to_vec() {
+        for FeePriority(block, _) in FEE_RATES.iter().cloned() {
             let diff = block as u64;
             let Ok(Some(fees)) = self.handler.estimate_feerate(height - diff) else {
                 continue;
@@ -219,10 +232,10 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
     }
 
     fn sync_get_utxo(&self, _: &mut Plugin<T>, txid: &str, idx: u64) -> Result<Value, PluginError> {
-        let txid = Txid::from_hex(txid).unwrap();
+        let txid = Txid::from_hex(txid).map_err(|err| error!("{err}"))?;
         let Some(utxo) = self
             .handler
-            .get_utxo(&txid, idx.try_into().unwrap())
+            .get_utxo(&txid, idx.try_into().map_err(|err| error!("{err}"))?)
             .map_err(from)?
         else {
             return Ok(json!({
@@ -231,7 +244,11 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
             }));
         };
         let mut resp = json_utils::init_payload();
-        json_utils::add_number(&mut resp, "amount", utxo.value.try_into().unwrap());
+        json_utils::add_number(
+            &mut resp,
+            "amount",
+            utxo.value.try_into().map_err(|err| error!("{err}"))?,
+        );
         json_utils::add_str(&mut resp, "script", utxo.script_pubkey.to_hex().as_str());
         Ok(resp)
     }
@@ -243,7 +260,7 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
         _: bool,
     ) -> Result<Value, PluginError> {
         let tx = hex!(tx);
-        let tx: Transaction = deserialize(&tx).unwrap();
+        let tx: Transaction = deserialize(&tx).map_err(|err| error!("{err}"))?;
         let mut resp = json_utils::init_payload();
         if let Err(err) = self.handler.submit_transaction(tx) {
             json_utils::add_bool(&mut resp, "success", false);
