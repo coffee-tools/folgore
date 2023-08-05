@@ -5,7 +5,7 @@ OPTIONS=
 
 default: fmt
 	$(CC) build
-	@make example
+	@make clippy
 
 fmt:
 	$(CC) fmt --all
@@ -18,6 +18,9 @@ example:
 
 clean:
 	$(CC) clean
+
+clippy:
+	$(CC) clippy --all --tests
 
 coffee:
 	$(CC) build --release

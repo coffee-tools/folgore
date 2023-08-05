@@ -1,3 +1,4 @@
+#![deny(clippy::unwrap_used)]
 use std::collections::HashMap;
 use std::fmt::Display;
 
@@ -83,7 +84,7 @@ impl Esplora {
         };
         let builder = Builder::new(&url);
         Ok(Self {
-            client: builder.build_blocking().unwrap(),
+            client: builder.build_blocking().map_err(|err| error!("{err}"))?,
         })
     }
 }
@@ -108,7 +109,7 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
         height: u64,
     ) -> Result<serde_json::Value, PluginError> {
-        let chain_tip = self.client.get_height().unwrap();
+        let chain_tip = self.client.get_height().map_err(|err| error!("{err}"))?;
         if height > chain_tip.into() {
             let resp = json!({
                 "blockhash": null,
@@ -118,9 +119,9 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         }
         let block = self
             .client
-            .get_blocks(Some(height.try_into().unwrap()))
+            .get_blocks(Some(height.try_into().map_err(|err| error!("{err}"))?))
             .map_err(from)?;
-        let block_hash = block.first().clone().unwrap();
+        let block_hash = block.first().ok_or(error!("block not found"))?;
         let block_hash = block_hash.id;
 
         let block = self.client.get_block_by_hash(&block_hash).map_err(from)?;
@@ -128,7 +129,7 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         if let Some(block) = block {
             json_utils::add_str(&mut response, "blockhash", &block_hash.to_string());
             let ser = serialize(&block);
-            let bytes = ByteBuf(&ser.as_slice());
+            let bytes = ByteBuf(ser.as_slice());
             json_utils::add_str(&mut response, "block", &format!("{:02x}", bytes));
             return Ok(response);
         }
@@ -149,7 +150,7 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         info!("blockchain height: {current_height}");
         let genesis = self.client.get_blocks(Some(0)).map_err(from)?;
 
-        let genesis = genesis.first().clone().unwrap();
+        let genesis = genesis.first().ok_or(error!("genesis block not found"))?;
         let network = match genesis.id.to_string().as_str() {
             "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f" => "main",
             "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943" => "test",
@@ -173,10 +174,14 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
 
         // FIXME: if some of the valus is none, we should return
         // a empity response to cln, see the satoshi backend docs
-        let hight = fee_in_range(&fee_rates, 2, 10).unwrap();
-        let urgent = fee_in_range(&fee_rates, 6, 15).unwrap();
-        let normal = fee_in_range(&fee_rates, 12, 24).unwrap();
-        let slow = fee_in_range(&fee_rates, 60, 170).unwrap();
+        let hight =
+            fee_in_range(&fee_rates, 2, 10).ok_or(error!("fee in the range [2, 10] not found"))?;
+        let urgent =
+            fee_in_range(&fee_rates, 6, 15).ok_or(error!("fee in the range [6, 15] not found"))?;
+        let normal = fee_in_range(&fee_rates, 12, 24)
+            .ok_or(error!("fee in the range [12, 24] not found"))?;
+        let slow = fee_in_range(&fee_rates, 60, 170)
+            .ok_or(error!("fee in the range [60, 17] not found"))?;
 
         // FIXME: manage to return an empty response when there is some error
         let mut resp = json_utils::init_payload();

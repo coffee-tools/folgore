@@ -51,8 +51,10 @@ impl PluginState {
         let client = BackendKind::try_from(client)?;
         match client {
             BackendKind::Nakamoto => {
-                let mut config = Config::default();
-                config.network = Network::from_str(&conf.network).unwrap();
+                let config = Config {
+                    network: Network::from_str(&conf.network).map_err(|err| error!("{err}"))?,
+                    ..Default::default()
+                };
                 let client = Nakamoto::new(config).map_err(|err| error!("{err}"))?;
                 Ok(Arc::new(client))
             }
@@ -138,7 +140,9 @@ pub fn build_plugin() -> Plugin<PluginState> {
 }
 
 fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
-    let client: String = plugin.get_opt("bitcoin-client").unwrap();
+    let client: String = plugin
+        .get_opt("bitcoin-client")
+        .expect("field `bitcoin-client` not present, this is a bug inside the plugin library");
     let esplora_url: Option<String> = plugin.get_opt("bitcoin-esplora-url").ok();
     if let Some(url) = esplora_url {
         if !url.trim().is_empty() {
@@ -146,19 +150,19 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
         }
     }
 
-    if let Some(url) = plugin.get_opt::<String>("bitcoin-rpcurl").ok() {
+    if let Ok(url) = plugin.get_opt::<String>("bitcoin-rpcurl") {
         if !url.trim().is_empty() {
             plugin.state.core_url = Some(url);
         }
     }
 
-    if let Some(user) = plugin.get_opt::<String>("bitcoin-rpcuser").ok() {
+    if let Ok(user) = plugin.get_opt::<String>("bitcoin-rpcuser") {
         if !user.trim().is_empty() {
             plugin.state.core_user = Some(user);
         }
     }
 
-    if let Some(pass) = plugin.get_opt::<String>("bitcoin-rpcpassword").ok() {
+    if let Ok(pass) = plugin.get_opt::<String>("bitcoin-rpcpassword") {
         if !pass.trim().is_empty() {
             plugin.state.core_pass = Some(pass);
         }
@@ -166,7 +170,10 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
 
     // SAFETY: the configuration should be always not null otherwise
     // there is a bug inside the plugin API
-    let conf = plugin.configuration.clone().unwrap();
+    let conf = plugin
+        .configuration
+        .clone()
+        .expect("configuration is None, this is a bug inside the plugin API");
     let client = plugin.state.new_client(&client, &conf);
     if let Err(err) = client {
         return json!({
@@ -175,7 +182,7 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     };
     plugin.state.client = client.ok();
 
-    if let Some(fallback) = plugin.get_opt::<String>("bitcoin-fallback-client").ok() {
+    if let Ok(fallback) = plugin.get_opt::<String>("bitcoin-fallback-client") {
         if !fallback.trim().is_empty() {
             let client = plugin.state.new_client(&fallback, &conf);
             if let Err(err) = client {
