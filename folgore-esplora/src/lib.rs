@@ -48,17 +48,20 @@ impl TryFrom<&str> for Network {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "bitcoin" => Ok(Self::Bitcoin("https://blockstream.info/api".to_owned())),
+            "bitcoin" => Ok(Self::Bitcoin("https://mempool.space/api/v1/".to_owned())),
             "bitcoin/tor" => Ok(Self::BitcoinTor(
                 "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/api"
                     .to_owned(),
             )),
             "testnet" => Ok(Self::Testnet(
-                "https://blockstream.info/testnet/api".to_owned(),
+                "https://mempool.space/testnet/api/v1/".to_owned(),
             )),
             "testnet/tor" => Ok(Self::TestnetTor(
                 "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/api"
                     .to_owned(),
+            )),
+            "signet" => Ok(Self::Testnet(
+                "https://mempool.space/signet/api/v1/".to_owned(),
             )),
             _ => Err(error!("network {value} not supported")),
         }
