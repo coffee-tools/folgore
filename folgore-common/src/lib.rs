@@ -1,4 +1,5 @@
 pub mod client;
+pub mod stragegy;
 
 pub mod utils {
     pub use bitcoin_hashes;
@@ -24,3 +25,8 @@ pub mod prelude {
     pub use clightningrpc_plugin as cln_plugin;
     pub use serde_json as json;
 }
+
+pub use clightningrpc_common as cln;
+pub use clightningrpc_plugin as cln_plugin;
+
+pub type Result<T> = std::result::Result<T, clightningrpc_plugin::errors::PluginError>;

@@ -2,6 +2,7 @@
 mod client;
 mod model;
 mod plugin;
+mod recovery;
 
 fn main() {
     let plugin = plugin::build_plugin();
