@@ -1,6 +1,7 @@
 #![deny(clippy::unwrap_used)]
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::sync::Arc;
 
 use log::{debug, info};
 use serde_json::json;
@@ -13,6 +14,7 @@ use esplora_client::{deserialize, serialize};
 use esplora_client::{BlockingClient, Builder};
 
 use folgore_common::client::FolgoreBackend;
+use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::ByteBuf;
 use folgore_common::utils::{bitcoin_hashes, hex};
 
@@ -70,12 +72,13 @@ fn from<T: Display>(value: T) -> PluginError {
 }
 
 #[derive(Clone)]
-pub struct Esplora {
+pub struct Esplora<R: RecoveryStrategy> {
     client: BlockingClient,
+    recovery_strategy: Arc<R>,
 }
 
-impl Esplora {
-    pub fn new(network: &str, url: Option<String>) -> Result<Self, PluginError> {
+impl<R: RecoveryStrategy> Esplora<R> {
+    pub fn new(network: &str, url: Option<String>, strategy: Arc<R>) -> Result<Self, PluginError> {
         let url = if let Some(url) = url {
             url
         } else {
@@ -85,6 +88,7 @@ impl Esplora {
         let builder = Builder::new(&url);
         Ok(Self {
             client: builder.build_blocking().map_err(|err| error!("{err}"))?,
+            recovery_strategy: strategy,
         })
     }
 }
@@ -99,7 +103,7 @@ fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option
     None
 }
 
-impl<T: Clone> FolgoreBackend<T> for Esplora {
+impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
     fn kind(&self) -> folgore_common::client::BackendKind {
         folgore_common::client::BackendKind::Esplora
     }
@@ -124,7 +128,10 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         let block_hash = block.first().ok_or(error!("block not found"))?;
         let block_hash = block_hash.id;
 
-        let block = self.client.get_block_by_hash(&block_hash).map_err(from)?;
+        let block = self
+            .recovery_strategy
+            .apply(|| self.client.get_block_by_hash(&block_hash).map_err(from))?;
+
         let mut response = json_utils::init_payload();
         if let Some(block) = block {
             json_utils::add_str(&mut response, "blockhash", &block_hash.to_string());
@@ -148,7 +155,9 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
     ) -> Result<serde_json::Value, PluginError> {
         let current_height = self.client.get_height().map_err(from)?;
         info!("blockchain height: {current_height}");
-        let genesis = self.client.get_blocks(Some(0)).map_err(from)?;
+        let genesis = self
+            .recovery_strategy
+            .apply(|| self.client.get_blocks(Some(0)).map_err(from))?;
 
         let genesis = genesis.first().ok_or(error!("genesis block not found"))?;
         let network = match genesis.id.to_string().as_str() {
@@ -170,7 +179,9 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         &self,
         _: &mut clightningrpc_plugin::plugin::Plugin<T>,
     ) -> Result<serde_json::Value, PluginError> {
-        let fee_rates = self.client.get_fee_estimates().map_err(from)?;
+        let fee_rates = self
+            .recovery_strategy
+            .apply(|| self.client.get_fee_estimates().map_err(from))?;
 
         // FIXME: if some of the valus is none, we should return
         // a empity response to cln, see the satoshi backend docs
@@ -203,7 +214,9 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         idx: u64,
     ) -> Result<serde_json::Value, PluginError> {
         let txid = Txid::from_hex(txid).map_err(from)?;
-        let utxo = self.client.get_tx(&txid).map_err(from)?;
+        let utxo = self
+            .recovery_strategy
+            .apply(|| self.client.get_tx(&txid).map_err(from))?;
 
         let mut resp = json_utils::init_payload();
         if let Some(tx) = utxo {
@@ -228,7 +241,9 @@ impl<T: Clone> FolgoreBackend<T> for Esplora {
         let tx: Result<Transaction, _> = deserialize(&tx);
         debug!("the transaction deserialised is {:?}", tx);
         let tx = tx.map_err(from)?;
-        let tx_send = self.client.broadcast(&tx);
+        let tx_send = self
+            .recovery_strategy
+            .apply(|| Ok(self.client.broadcast(&tx)))?;
 
         let mut resp = json_utils::init_payload();
         json_utils::add_bool(&mut resp, "success", tx_send.is_ok());

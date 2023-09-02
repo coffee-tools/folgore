@@ -18,6 +18,7 @@ use folgore_esplora::Esplora;
 use folgore_nakamoto::{Config, Nakamoto, Network};
 
 use crate::model::{BlockByHeight, GetChainInfo, GetUTxo, SendRawTx};
+use crate::recovery::TimeoutRetry;
 
 #[derive(Clone)]
 pub struct PluginState {
@@ -60,7 +61,11 @@ impl PluginState {
             }
             BackendKind::Esplora => {
                 // FIXME: check if there is the proxy enabled to pass the tor addrs
-                let client = Esplora::new(&conf.network, self.esplora_url.to_owned())?;
+                let client = Esplora::new(
+                    &conf.network,
+                    self.esplora_url.to_owned(),
+                    TimeoutRetry::default().into(),
+                )?;
                 Ok(Arc::new(client))
             }
             BackendKind::BitcoinCore => {
