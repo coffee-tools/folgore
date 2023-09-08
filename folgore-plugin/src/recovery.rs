@@ -3,7 +3,7 @@
 //!
 //! Author: Vincenzo Palazzo <vincenzopalazzo@member.fsf.org>
 use std::cell::RefCell;
-use std::ops::AddAssign;
+use std::ops::{AddAssign, MulAssign};
 use std::time::Duration;
 
 use folgore_common::cln_plugin::error;
@@ -70,10 +70,9 @@ impl RecoveryStrategy for TimeoutRetry {
                 ));
             }
             // This help us to keep the self not mutable.
-            let timeout = *self.timeout.borrow();
-            std::thread::sleep(timeout);
+            std::thread::sleep(*self.timeout.borrow());
             // now we increase the timeout
-            *self.timeout.borrow_mut() = timeout * 2;
+            self.timeout.borrow_mut().mul_assign(2);
             self.times.borrow_mut().add_assign(1);
             result = cb();
         }
