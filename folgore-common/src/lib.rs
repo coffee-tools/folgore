@@ -21,8 +21,11 @@ pub mod utils {
 }
 
 pub mod prelude {
+    // FIXME: remove the followung clightninrpc from
+    // here
     pub use clightningrpc_common as cln;
     pub use clightningrpc_plugin as cln_plugin;
+    pub use log;
     pub use serde_json as json;
 }
 
