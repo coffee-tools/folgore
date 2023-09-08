@@ -8,9 +8,19 @@ use std::time::Duration;
 
 use folgore_common::cln_plugin::error;
 use folgore_common::cln_plugin::errors::PluginError;
+use folgore_common::prelude::*;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::Result;
 
+/// Timeout Retry is a simple strategy that retry the call
+/// for more times with a increasing timeout.
+///
+/// This is useful in case of HTTPs API services that block
+/// a client request due the too many request in a range of
+/// period.
+///
+/// Esplora implement something similar, and we work around
+/// with this strategy.
 pub struct TimeoutRetry {
     pub timeout: RefCell<Duration>,
     pub times: RefCell<u8>,
@@ -43,6 +53,14 @@ impl RecoveryStrategy for TimeoutRetry {
         let mut result = cb();
         while result.is_err() {
             if self.times.borrow().eq(&4) {
+                log::info!(
+                    "we try {} times the request but the error persist",
+                    self.times.borrow()
+                );
+                log::debug!(
+                    "Error during the recovery strategy: `{:?}`",
+                    result.as_ref().err()
+                );
                 // SAFETY: it is safe unwrap the error because we already know
                 // that will be always Some,
                 #[allow(clippy::unwrap_used)]
