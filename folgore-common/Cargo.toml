@@ -9,4 +9,4 @@ bitcoin_hashes = "0.12.0"
 log = "0.4"
 
 clightningrpc-common = "0.3.0-beta.4"
-clightningrpc-plugin = "0.3.0-beta.8"
+clightningrpc-plugin = { git = "https://github.com/laanwj/cln4rust.git", branch = "macros/plugin-logv2", features = ["log"] }
