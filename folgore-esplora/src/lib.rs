@@ -10,10 +10,11 @@ use clightningrpc_common::json_utils;
 use clightningrpc_plugin::error;
 use clightningrpc_plugin::errors::PluginError;
 use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
-use esplora_client::{deserialize, serialize};
+use esplora_client::{deserialize, serialize, BlockSummary};
 use esplora_client::{BlockingClient, Builder};
 
 use folgore_common::client::FolgoreBackend;
+use folgore_common::cln_plugin::types::LogLevel;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::ByteBuf;
 use folgore_common::utils::{bitcoin_hashes, hex};
@@ -113,9 +114,14 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_block_by_height(
         &self,
-        _: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        plugin: &mut clightningrpc_plugin::plugin::Plugin<T>,
         height: u64,
     ) -> Result<serde_json::Value, PluginError> {
+        let fail_resp = json!({
+            "blockhash": null,
+            "block": null,
+        });
+
         let chain_tip = self.client.get_height().map_err(|err| error!("{err}"))?;
         if height > chain_tip.into() {
             let resp = json!({
@@ -124,10 +130,25 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             });
             return Ok(resp);
         }
-        let block = self
-            .client
-            .get_blocks(Some(height.try_into().map_err(|err| error!("{err}"))?))
-            .map_err(from)?;
+        // Check if the blocks that core lightning wants exist.
+        let current_height = self
+            .recovery_strategy
+            .apply(|| self.client.get_height().map_err(|err| error!("{err}")))
+            .map_err(|err| error!("{err}"))?;
+        if current_height < height as u32 {
+            plugin.log(
+                LogLevel::Debug,
+                &format!("requesting block out of best chain. Block height wanted: {height}"),
+            );
+            return Ok(fail_resp);
+        }
+
+        // Now that we are sure that the block exist we can requesting it
+        let block: Vec<BlockSummary> = self.recovery_strategy.apply(|| {
+            self.client
+                .get_blocks(Some(height.try_into().expect("height convertion fails")))
+                .map_err(|err| error!("{err}"))
+        })?;
         let block_hash = block.first().ok_or(error!("block not found"))?;
         let block_hash = block_hash.id;
 
@@ -144,11 +165,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             return Ok(response);
         }
         debug!("block not found!");
-        let resp = json!({
-            "blockhash": null,
-            "block": null,
-        });
-        Ok(resp)
+        Ok(fail_resp)
     }
 
     fn sync_chain_info(

@@ -11,13 +11,15 @@ use std::str::FromStr;
 use bitcoincore_rpc::bitcoin::consensus::{deserialize, serialize};
 use bitcoincore_rpc::bitcoin::Transaction;
 use bitcoincore_rpc::bitcoin::Txid;
+use bitcoincore_rpc::bitcoincore_rpc_json::EstimateMode;
+use bitcoincore_rpc::jsonrpc::serde_json::json;
 use bitcoincore_rpc::RpcApi;
 use bitcoincore_rpc::{Auth, Client};
 
-use bitcoincore_rpc::bitcoincore_rpc_json::EstimateMode;
 use folgore_common::client::fee_estimator::FeeEstimator;
 use folgore_common::client::fee_estimator::{FeePriority, FEE_RATES};
 use folgore_common::client::FolgoreBackend;
+use folgore_common::cln_plugin::types::LogLevel;
 use folgore_common::hex;
 use folgore_common::prelude::cln_plugin::error;
 use folgore_common::prelude::cln_plugin::errors;
@@ -63,9 +65,23 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
 
     fn sync_block_by_height(
         &self,
-        _: &mut plugin::Plugin<T>,
+        plugin: &mut plugin::Plugin<T>,
         height: u64,
     ) -> Result<json::Value, errors::PluginError> {
+        let current_height = self
+            .client
+            .get_block_count()
+            .map_err(|err| error!("{err}"))?;
+        if current_height < height {
+            plugin.log(
+                LogLevel::Debug,
+                &format!("requesting block out of best chain. Block height wanted: {height}"),
+            );
+            return Ok(json!({
+                "blockhash": null,
+                "block": null,
+            }));
+        }
         let block_header = self
             .client
             .get_block_hash(height)
