@@ -52,6 +52,11 @@ impl RecoveryStrategy for TimeoutRetry {
     {
         let mut result = cb();
         while result.is_err() {
+            log::info!(
+                "running into retry logic due a request failing. Time `{}` waiting `{}` secs",
+                *self.times.borrow(),
+                self.timeout.borrow().as_secs()
+            );
             if self.times.borrow().eq(&4) {
                 log::info!(
                     "we try {} times the request but the error persist",
@@ -71,6 +76,7 @@ impl RecoveryStrategy for TimeoutRetry {
             }
             // This help us to keep the self not mutable.
             std::thread::sleep(*self.timeout.borrow());
+            log::info!("Waiting timeout end");
             // now we increase the timeout
             self.timeout.borrow_mut().mul_assign(2);
             self.times.borrow_mut().add_assign(1);

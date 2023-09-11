@@ -122,7 +122,10 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             "block": null,
         });
 
-        let chain_tip = self.client.get_height().map_err(|err| error!("{err}"))?;
+        let chain_tip = self
+            .recovery_strategy
+            .apply(|| self.client.get_height().map_err(|err| error!("{err}")))
+            .map_err(|err| error!("{err}"))?;
         if height > chain_tip.into() {
             let resp = json!({
                 "blockhash": null,
