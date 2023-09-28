@@ -184,6 +184,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         let network = match genesis.id.to_string().as_str() {
             "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f" => "main",
             "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943" => "test",
+            "00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6" => "signet",
             "1466275836220db2944ca059a3a10ef6fd2ea684b0688d2c379296888a206003" => "liquidv1",
             _ => return Err(error!("wrong chain hash {}", genesis.id)),
         };
