@@ -221,16 +221,16 @@ fn get_chain_info(plugin: &mut Plugin<PluginState>, request: Value) -> Result<Va
         "Client must be not null at this point, please report a bug"
     ))?;
     // FIXME: make this not null
-    let fallback = plg
-        .state
-        .fallback
-        .as_mut()
-        .ok_or(error!("Fallback must be not null"))?;
+    let fallback = plg.state.fallback.as_mut();
     plugin.log(LogLevel::Info, &format!("cln request {request}"));
     let request: GetChainInfo = serde_json::from_value(request)?;
 
     let mut result: Result<Value, PluginError> = Err(error!("result undefined"));
-    for client in [client, fallback] {
+    for client in [Some(client), fallback] {
+        if client.is_none() {
+            continue;
+        }
+        let client = client.unwrap();
         result = client.sync_chain_info(plugin, request.last_height.clone());
         let Ok(ref result) = result else {
             plugin.log(
@@ -260,13 +260,13 @@ fn estimate_fees(plugin: &mut Plugin<PluginState>, _: Value) -> Result<Value, Pl
         .client
         .clone()
         .ok_or(error!("client must be not null at this point"))?;
-    let fallback = plugin
-        .state
-        .fallback
-        .clone()
-        .ok_or(error!("fallback backend must be not null"))?;
+    let fallback = plugin.state.fallback.clone();
     let mut result: Result<Value, PluginError> = Err(error!("the result is null"));
-    for client in [client, fallback] {
+    for client in [Some(client), fallback] {
+        if client.is_none() {
+            continue;
+        }
+        let client = client.unwrap();
         result = client.sync_estimate_fees(plugin);
         let Ok(ref result) = result else {
             plugin.log(
@@ -299,15 +299,15 @@ fn get_raw_block_by_height(
         .client
         .clone()
         .ok_or(error!("Client must be null at this point"))?;
-    let fallback = plugin
-        .state
-        .fallback
-        .clone()
-        .ok_or(error!("Fallback must be not null at this point"))?;
+    let fallback = plugin.state.fallback.clone();
     plugin.log(LogLevel::Info, &format!("cln request {request}"));
     let request: BlockByHeight = serde_json::from_value(request)?;
     let mut result: Result<Value, PluginError> = Err(error!("result never init"));
-    for client in [client, fallback] {
+    for client in [Some(client), fallback] {
+        if client.is_none() {
+            continue;
+        }
+        let client = client.unwrap();
         result = client.sync_block_by_height(plugin, request.height);
         let Ok(ref result) = result else {
             plugin.log(
@@ -336,15 +336,15 @@ fn getutxout(plugin: &mut Plugin<PluginState>, request: Value) -> Result<Value, 
         .client
         .clone()
         .ok_or(error!("Client must be not null at this point"))?;
-    let fallback = plugin
-        .state
-        .fallback
-        .clone()
-        .ok_or(error!("Fallback client must be not null at this point"))?;
+    let fallback = plugin.state.fallback.clone();
     plugin.log(LogLevel::Info, &format!("cln request: {request}"));
     let request: GetUTxo = serde_json::from_value(request)?;
     let mut result: Result<Value, PluginError> = Err(error!("result never init"));
-    for client in [client, fallback] {
+    for client in [Some(client), fallback] {
+        if client.is_none() {
+            continue;
+        }
+        let client = client.unwrap();
         result = client.sync_get_utxo(plugin, &request.txid, request.vout);
         let Ok(ref result) = result else {
             plugin.log(
@@ -377,16 +377,16 @@ fn send_rawtransaction(
         .client
         .clone()
         .ok_or(error!("Client must be not null at this point"))?;
-    let fallback = plugin
-        .state
-        .fallback
-        .clone()
-        .ok_or(error!("Fallback client must be not null at this point"))?;
+    let fallback = plugin.state.fallback.clone();
     plugin.log(LogLevel::Info, &format!("cln request: {request}"));
     let request: SendRawTx = serde_json::from_value(request)?;
 
     let mut result: Result<Value, PluginError> = Err(error!("result never init"));
-    for client in [client, fallback] {
+    for client in [Some(client), fallback] {
+        if client.is_none() {
+            continue;
+        }
+        let client = client.unwrap();
         result = client.sync_send_raw_transaction(plugin, &request.tx, request.allowhighfees);
         let Ok(ref result) = result else {
             plugin.log(
