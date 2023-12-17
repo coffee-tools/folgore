@@ -64,6 +64,9 @@ impl TryFrom<&str> for Network {
                     .to_owned(),
             )),
             "signet" => Ok(Self::Testnet("https://mempool.space/signet/api".to_owned())),
+            "liquid" => Ok(Self::Liquid(
+                "https://blockstream.info/liquid/api".to_owned(),
+            )),
             _ => Err(error!("network {value} not supported")),
         }
     }
