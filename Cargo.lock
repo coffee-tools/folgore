@@ -755,7 +755,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-chain"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#5b44354d4e44d1625215189784c429cc0070d5d9"
+source = "git+https://github.com/cloudhead/nakamoto#9ea71ed71655e41b8b1ec7db02b4b8dea6f9f1ea"
 dependencies = [
  "log",
  "nakamoto-common",
@@ -765,7 +765,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-client"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#5b44354d4e44d1625215189784c429cc0070d5d9"
+source = "git+https://github.com/cloudhead/nakamoto#9ea71ed71655e41b8b1ec7db02b4b8dea6f9f1ea"
 dependencies = [
  "crossbeam-channel",
  "fastrand 1.9.0",
@@ -781,7 +781,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-common"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#5b44354d4e44d1625215189784c429cc0070d5d9"
+source = "git+https://github.com/cloudhead/nakamoto#9ea71ed71655e41b8b1ec7db02b4b8dea6f9f1ea"
 dependencies = [
  "bitcoin 0.29.2",
  "bitcoin_hashes 0.11.0",
@@ -796,7 +796,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-net"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#5b44354d4e44d1625215189784c429cc0070d5d9"
+source = "git+https://github.com/cloudhead/nakamoto#9ea71ed71655e41b8b1ec7db02b4b8dea6f9f1ea"
 dependencies = [
  "crossbeam-channel",
  "fastrand 1.9.0",
@@ -807,7 +807,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-net-poll"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#5b44354d4e44d1625215189784c429cc0070d5d9"
+source = "git+https://github.com/cloudhead/nakamoto#9ea71ed71655e41b8b1ec7db02b4b8dea6f9f1ea"
 dependencies = [
  "crossbeam-channel",
  "libc",
@@ -820,7 +820,7 @@ dependencies = [
 [[package]]
 name = "nakamoto-p2p"
 version = "0.4.0"
-source = "git+https://github.com/vincenzopalazzo/nakamoto?branch=macros/client_model-fixes#5b44354d4e44d1625215189784c429cc0070d5d9"
+source = "git+https://github.com/cloudhead/nakamoto#9ea71ed71655e41b8b1ec7db02b4b8dea6f9f1ea"
 dependencies = [
  "crossbeam-channel",
  "fastrand 1.9.0",
