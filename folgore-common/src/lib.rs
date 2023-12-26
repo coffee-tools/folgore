@@ -29,7 +29,9 @@ pub mod prelude {
     pub use serde_json as json;
 }
 
-pub use clightningrpc_common as cln;
-pub use clightningrpc_plugin as cln_plugin;
+pub mod cln {
+    pub use clightningrpc_common::*;
+    pub use clightningrpc_plugin as plugin;
+}
 
 pub type Result<T> = std::result::Result<T, clightningrpc_plugin::errors::PluginError>;

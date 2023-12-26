@@ -6,15 +6,16 @@ use std::sync::Arc;
 use log::{debug, info};
 use serde_json::json;
 
-use clightningrpc_common::json_utils;
-use clightningrpc_plugin::error;
-use clightningrpc_plugin::errors::PluginError;
 use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
 use esplora_client::{deserialize, serialize, BlockSummary};
 use esplora_client::{BlockingClient, Builder};
 
 use folgore_common::client::FolgoreBackend;
-use folgore_common::cln_plugin::types::LogLevel;
+use folgore_common::cln;
+use folgore_common::cln::json_utils;
+use folgore_common::cln::plugin::error;
+use folgore_common::cln::plugin::errors::PluginError;
+use folgore_common::cln::plugin::types::LogLevel;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::ByteBuf;
 use folgore_common::utils::{bitcoin_hashes, hex};
@@ -112,7 +113,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_block_by_height(
         &self,
-        plugin: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        plugin: &mut cln::plugin::plugin::Plugin<T>,
         height: u64,
     ) -> Result<serde_json::Value, PluginError> {
         let fail_resp = json!({
@@ -171,7 +172,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_chain_info(
         &self,
-        _: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        _: &mut cln::plugin::plugin::Plugin<T>,
         _: Option<u64>,
     ) -> Result<serde_json::Value, PluginError> {
         let current_height = self.client.get_height().map_err(from)?;
@@ -199,7 +200,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_estimate_fees(
         &self,
-        _: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        _: &mut cln::plugin::plugin::Plugin<T>,
     ) -> Result<serde_json::Value, PluginError> {
         let fee_rates = self
             .recovery_strategy
@@ -231,7 +232,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_get_utxo(
         &self,
-        _: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        _: &mut cln::plugin::plugin::Plugin<T>,
         txid: &str,
         idx: u64,
     ) -> Result<serde_json::Value, PluginError> {
@@ -255,7 +256,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_send_raw_transaction(
         &self,
-        _: &mut clightningrpc_plugin::plugin::Plugin<T>,
+        _: &mut cln::plugin::plugin::Plugin<T>,
         tx: &str,
         _with_hight_fee: bool,
     ) -> Result<serde_json::Value, PluginError> {

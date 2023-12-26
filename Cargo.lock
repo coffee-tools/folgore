@@ -189,12 +189,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "clightningrpc-common"
+version = "0.3.0-beta.4"
+source = "git+https://github.com/laanwj/cln4rust.git#020cc5fb6f468fc6d09e59d11d148bce575ffecc"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "clightningrpc-plugin"
 version = "0.3.0-beta.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9807dd1f895fadfc9fe8e9f355cabbccf994d4c7b0e3a921726679faa3e2713d"
 dependencies = [
- "clightningrpc-common",
+ "clightningrpc-common 0.3.0-beta.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_json",
 ]
@@ -204,7 +213,18 @@ name = "clightningrpc-plugin"
 version = "0.3.0-beta.8"
 source = "git+https://github.com/laanwj/cln4rust.git?branch=macros/plugin-logv2#5412f22232fa22b932044e2aaa21e9704b8edc16"
 dependencies = [
- "clightningrpc-common",
+ "clightningrpc-common 0.3.0-beta.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "clightningrpc-plugin"
+version = "0.3.0-beta.8"
+source = "git+https://github.com/laanwj/cln4rust.git#020cc5fb6f468fc6d09e59d11d148bce575ffecc"
+dependencies = [
+ "clightningrpc-common 0.3.0-beta.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "serde",
  "serde_json",
@@ -213,8 +233,7 @@ dependencies = [
 [[package]]
 name = "clightningrpc-plugin-macros"
 version = "0.3.0-beta.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef81a4e59115a4ed470ea218793a76fa67d9974e6fdf9b93cb1c693130eb7755"
+source = "git+https://github.com/laanwj/cln4rust.git#020cc5fb6f468fc6d09e59d11d148bce575ffecc"
 dependencies = [
  "clightningrpc-plugin 0.3.0-beta.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "convert_case",
@@ -365,8 +384,8 @@ name = "folgore-common"
 version = "0.1.0"
 dependencies = [
  "bitcoin_hashes 0.12.0",
- "clightningrpc-common",
- "clightningrpc-plugin 0.3.0-beta.8 (git+https://github.com/laanwj/cln4rust.git?branch=macros/plugin-logv2)",
+ "clightningrpc-common 0.3.0-beta.4 (git+https://github.com/laanwj/cln4rust.git)",
+ "clightningrpc-plugin 0.3.0-beta.8 (git+https://github.com/laanwj/cln4rust.git)",
  "log",
  "serde_json",
 ]
@@ -375,7 +394,7 @@ dependencies = [
 name = "folgore-esplora"
 version = "0.1.0"
 dependencies = [
- "clightningrpc-common",
+ "clightningrpc-common 0.3.0-beta.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "clightningrpc-plugin 0.3.0-beta.8 (git+https://github.com/laanwj/cln4rust.git?branch=macros/plugin-logv2)",
  "esplora-client",
  "folgore-common",
@@ -387,8 +406,6 @@ dependencies = [
 name = "folgore-nakamoto"
 version = "0.1.0"
 dependencies = [
- "clightningrpc-common",
- "clightningrpc-plugin 0.3.0-beta.8 (git+https://github.com/laanwj/cln4rust.git?branch=macros/plugin-logv2)",
  "folgore-common",
  "nakamoto-client",
  "nakamoto-common",
@@ -401,8 +418,6 @@ dependencies = [
 name = "folgore_plugin"
 version = "0.1.0"
 dependencies = [
- "clightningrpc-common",
- "clightningrpc-plugin 0.3.0-beta.8 (git+https://github.com/laanwj/cln4rust.git?branch=macros/plugin-logv2)",
  "clightningrpc-plugin-macros",
  "folgore-bitcoind",
  "folgore-common",

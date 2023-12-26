@@ -19,7 +19,7 @@ use bitcoincore_rpc::{Auth, Client};
 use folgore_common::client::fee_estimator::FeeEstimator;
 use folgore_common::client::fee_estimator::{FeePriority, FEE_RATES};
 use folgore_common::client::FolgoreBackend;
-use folgore_common::cln_plugin::types::LogLevel;
+use folgore_common::cln::plugin::types::LogLevel;
 use folgore_common::hex;
 use folgore_common::prelude::cln_plugin::error;
 use folgore_common::prelude::cln_plugin::errors;
