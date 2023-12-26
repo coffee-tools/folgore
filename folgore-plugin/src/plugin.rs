@@ -2,18 +2,17 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use folgore_bitcoind::BitcoinCore;
-use serde_json::{json, Value};
-
-use clightningrpc_plugin::commands::{types::CLNConf, RPCCommand};
-use clightningrpc_plugin::error;
-use clightningrpc_plugin::errors::PluginError;
-use clightningrpc_plugin::plugin::Plugin;
-use clightningrpc_plugin::types::LogLevel;
 use clightningrpc_plugin_macros::plugin;
 use clightningrpc_plugin_macros::rpc_method;
+use serde_json::{json, Value};
 
+use folgore_bitcoind::BitcoinCore;
 use folgore_common::client::{BackendKind, FolgoreBackend};
+use folgore_common::cln::plugin::commands::{types::CLNConf, RPCCommand};
+use folgore_common::cln::plugin::error;
+use folgore_common::cln::plugin::errors::PluginError;
+use folgore_common::cln::plugin::plugin::Plugin;
+use folgore_common::cln::plugin::types::LogLevel;
 use folgore_esplora::Esplora;
 use folgore_nakamoto::{Config, Nakamoto, Network};
 
@@ -144,30 +143,32 @@ pub fn build_plugin() -> Plugin<PluginState> {
         .on_init(on_init)
 }
 
+// FIXME: on init should return an result where the error
+// is the reason of the disable
 fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     let client: String = plugin
+        // if the client is not specified, set the esplora one as a default client
         .get_opt("bitcoin-client")
-        .expect("field `bitcoin-client` not present, this is a bug inside the plugin library");
-    let esplora_url: Option<String> = plugin.get_opt("bitcoin-esplora-url").ok();
-    if let Some(url) = esplora_url {
+        .unwrap_or("esplora".to_owned());
+    if let Some(url) = plugin.get_opt::<String>("bitcoin-esplora-url") {
         if !url.trim().is_empty() {
             plugin.state.esplora_url = Some(url.trim().to_string());
         }
     }
 
-    if let Ok(url) = plugin.get_opt::<String>("bitcoin-rpcurl") {
+    if let Some(url) = plugin.get_opt::<String>("bitcoin-rpcurl") {
         if !url.trim().is_empty() {
             plugin.state.core_url = Some(url);
         }
     }
 
-    if let Ok(user) = plugin.get_opt::<String>("bitcoin-rpcuser") {
+    if let Some(user) = plugin.get_opt::<String>("bitcoin-rpcuser") {
         if !user.trim().is_empty() {
             plugin.state.core_user = Some(user);
         }
     }
 
-    if let Ok(pass) = plugin.get_opt::<String>("bitcoin-rpcpassword") {
+    if let Some(pass) = plugin.get_opt::<String>("bitcoin-rpcpassword") {
         if !pass.trim().is_empty() {
             plugin.state.core_pass = Some(pass);
         }
@@ -187,7 +188,7 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     };
     plugin.state.client = client.ok();
 
-    if let Ok(fallback) = plugin.get_opt::<String>("bitcoin-fallback-client") {
+    if let Some(fallback) = plugin.get_opt::<String>("bitcoin-fallback-client") {
         if !fallback.trim().is_empty() {
             let client = plugin.state.new_client(&fallback, &conf);
             if let Err(err) = client {

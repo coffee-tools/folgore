@@ -7,27 +7,27 @@ use std::net::TcpStream;
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 
-use clightningrpc_plugin::types::LogLevel;
-use nakamoto_client::FeeRate;
-use serde_json::{json, Value};
-
-use clightningrpc_common::json_utils;
-use clightningrpc_plugin::error;
-use clightningrpc_plugin::errors::PluginError;
-use clightningrpc_plugin::plugin::Plugin;
 use nakamoto_client::handle::Handle;
 use nakamoto_client::model::Tip;
-pub use nakamoto_client::Config;
-pub use nakamoto_client::{Client, Error, Event, Network};
+use nakamoto_client::FeeRate;
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::bitcoin::Txid;
 use nakamoto_common::bitcoin_hashes::hex::{FromHex, ToHex};
 use nakamoto_common::block::{Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
+use serde_json::{json, Value};
 
 use folgore_common::client::fee_estimator::{FeePriority, FEE_RATES};
 use folgore_common::client::FolgoreBackend;
+use folgore_common::cln::json_utils;
+use folgore_common::cln::plugin::error;
+use folgore_common::cln::plugin::errors::PluginError;
+use folgore_common::cln::plugin::plugin::Plugin;
+use folgore_common::cln::plugin::types::LogLevel;
 use folgore_common::utils::{bitcoin_hashes, hex};
+
+pub use nakamoto_client::Config;
+pub use nakamoto_client::{Client, Error, Event, Network};
 
 pub struct Nakamoto {
     network: Network,

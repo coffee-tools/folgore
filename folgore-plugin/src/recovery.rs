@@ -6,9 +6,9 @@ use std::cell::RefCell;
 use std::ops::{AddAssign, MulAssign};
 use std::time::Duration;
 
-use folgore_common::cln_plugin::error;
-use folgore_common::cln_plugin::errors::PluginError;
-use folgore_common::prelude::*;
+use folgore_common::cln::plugin;
+use folgore_common::cln::plugin::errors::PluginError;
+use folgore_common::prelude::log;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::Result;
 
@@ -69,7 +69,7 @@ impl RecoveryStrategy for TimeoutRetry {
                 // SAFETY: it is safe unwrap the error because we already know
                 // that will be always Some,
                 #[allow(clippy::unwrap_used)]
-                return Err(error!(
+                return Err(plugin::error!(
                     "Recovery strategy (TimeoutRety) fails: `{}`",
                     result.err().unwrap().clone()
                 ));
