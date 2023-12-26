@@ -8,13 +8,12 @@ use std::sync::Mutex;
 use std::thread::JoinHandle;
 
 use nakamoto_client::handle::Handle;
-use nakamoto_client::model::Tip;
-use nakamoto_client::FeeRate;
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::bitcoin::Txid;
 use nakamoto_common::bitcoin_hashes::hex::{FromHex, ToHex};
 use nakamoto_common::block::{Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
+use nakamoto_p2p::fsm::fees::FeeRate;
 use serde_json::{json, Value};
 
 use folgore_common::client::fee_estimator::{FeePriority, FEE_RATES};
@@ -165,7 +164,7 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
         known_height: Option<u64>,
     ) -> Result<Value, PluginError> {
         match self.handler.get_tip() {
-            Ok(Tip { mut height, .. }) => {
+            Ok((height, ..)) => {
                 let mut is_sync = true;
                 if Some(height) <= known_height {
                     while let Err(err) = self
@@ -212,6 +211,8 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
         let mut fee_map = HashMap::new();
         for FeePriority(block, _) in FEE_RATES.iter().cloned() {
             let diff = block as u64;
+            // FIXME: use a separate backend to estiamte the fee, maybe look at
+            // the neutrino API?
             let Ok(Some(fees)) = self.handler.estimate_feerate(height - diff) else {
                 continue;
             };
@@ -235,7 +236,7 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
         let txid = Txid::from_hex(txid).map_err(|err| error!("{err}"))?;
         let Some(utxo) = self
             .handler
-            .get_utxo(&txid, idx.try_into().map_err(|err| error!("{err}"))?)
+            .get_submitted_transaction(&txid)
             .map_err(from)?
         else {
             return Ok(json!({
@@ -243,6 +244,7 @@ impl<T: Clone> FolgoreBackend<T> for Nakamoto {
                 "script": null,
             }));
         };
+        let utxo = utxo.output[idx as usize];
         let mut resp = json_utils::init_payload();
         json_utils::add_number(
             &mut resp,
