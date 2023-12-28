@@ -407,6 +407,7 @@ name = "folgore-nakamoto"
 version = "0.1.0"
 dependencies = [
  "folgore-common",
+ "folgore-esplora",
  "nakamoto-client",
  "nakamoto-common",
  "nakamoto-net-poll",

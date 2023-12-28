@@ -10,5 +10,5 @@ nakamoto-net-poll = { git = "https://github.com/cloudhead/nakamoto"  }
 nakamoto-p2p = { git = "https://github.com/cloudhead/nakamoto"  }
 nakamoto-common = { git = "https://github.com/cloudhead/nakamoto"  }
 folgore-common = { path = "../folgore-common" }
-
+folgore-esplora = { path = "../folgore-esplora" }
 serde_json = "1.0"
