@@ -55,7 +55,13 @@ impl PluginState {
                     network: Network::from_str(&conf.network).map_err(|err| error!("{err}"))?,
                     ..Default::default()
                 };
-                let client = Nakamoto::new(config).map_err(|err| error!("{err}"))?;
+                let client = Esplora::new(
+                    &conf.network,
+                    self.esplora_url.to_owned(),
+                    TimeoutRetry::default().into(),
+                )?;
+
+                let client = Nakamoto::new(config, client).map_err(|err| error!("{err}"))?;
                 Ok(Arc::new(client))
             }
             BackendKind::Esplora => {
