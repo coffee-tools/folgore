@@ -10,8 +10,7 @@ use folgore_common::stragegy::RecoveryStrategy;
 use folgore_esplora::Esplora;
 use nakamoto_client::handle::Handle;
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
-use nakamoto_common::bitcoin::Txid;
-use nakamoto_common::bitcoin_hashes::hex::{FromHex, ToHex};
+use nakamoto_common::bitcoin_hashes::hex::ToHex;
 use nakamoto_common::block::{Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
 use serde_json::{json, Value};
@@ -151,27 +150,16 @@ impl<T: Clone, R: RecoveryStrategy> FolgoreBackend<T> for Nakamoto<R> {
         self.esplora.sync_estimate_fees(plugin)
     }
 
-    fn sync_get_utxo(&self, _: &mut Plugin<T>, txid: &str, idx: u64) -> Result<Value, PluginError> {
-        let txid = Txid::from_hex(txid).map_err(|err| error!("{err}"))?;
-        let Some(utxo) = self
-            .handler
-            .get_submitted_transaction(&txid)
-            .map_err(from)?
-        else {
-            return Ok(json!({
-                "amount": null,
-                "script": null,
-            }));
-        };
-        let utxo = &utxo.output[idx as usize];
-        let mut resp = json_utils::init_payload();
-        json_utils::add_number(
-            &mut resp,
-            "amount",
-            utxo.value.try_into().map_err(|err| error!("{err}"))?,
-        );
-        json_utils::add_str(&mut resp, "script", utxo.script_pubkey.to_hex().as_str());
-        Ok(resp)
+    fn sync_get_utxo(
+        &self,
+        plugin: &mut Plugin<T>,
+        txid: &str,
+        idx: u64,
+    ) -> Result<Value, PluginError> {
+        // Nakamoto could monitor this transaction if will get inside the
+        // blockchain but it is not ready yet. So we are forwarding the job
+        // to the esplora backend.
+        self.esplora.sync_get_utxo(plugin, txid, idx)
     }
 
     fn sync_send_raw_transaction(
