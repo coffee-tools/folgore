@@ -230,7 +230,7 @@ fn get_chain_info(plugin: &mut Plugin<PluginState>, request: Value) -> Result<Va
 
     let mut result: Result<Value, PluginError> = Err(error!("result undefined"));
     for client in [client, fallback] {
-        result = client.sync_chain_info(plugin, request.height.clone());
+        result = client.sync_chain_info(plugin, request.last_height.clone());
         let Ok(ref result) = result else {
             plugin.log(
                 LogLevel::Warn,
