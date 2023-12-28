@@ -20,5 +20,5 @@ pub(crate) struct SendRawTx {
 
 #[derive(Deserialize, Serialize)]
 pub(crate) struct GetChainInfo {
-    pub(crate) height: Option<u64>,
+    pub(crate) last_height: Option<u64>,
 }

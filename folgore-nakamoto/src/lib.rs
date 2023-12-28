@@ -6,8 +6,6 @@ use std::net::TcpStream;
 use std::sync::Mutex;
 use std::thread::JoinHandle;
 
-use folgore_common::stragegy::RecoveryStrategy;
-use folgore_esplora::Esplora;
 use nakamoto_client::handle::Handle;
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
 use nakamoto_common::bitcoin_hashes::hex::ToHex;
@@ -20,8 +18,10 @@ use folgore_common::cln::json_utils;
 use folgore_common::cln::plugin::error;
 use folgore_common::cln::plugin::errors::PluginError;
 use folgore_common::cln::plugin::plugin::Plugin;
-use folgore_common::cln::plugin::types::LogLevel;
+use folgore_common::prelude::cln_plugin::types::LogLevel;
+use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::{bitcoin_hashes, hex};
+use folgore_esplora::Esplora;
 
 pub use nakamoto_client::Config;
 pub use nakamoto_client::{Client, Error, Event, Network};
@@ -109,40 +109,34 @@ impl<T: Clone, R: RecoveryStrategy> FolgoreBackend<T> for Nakamoto<R> {
         plugin: &mut Plugin<T>,
         known_height: Option<u64>,
     ) -> Result<Value, PluginError> {
-        match self.handler.get_tip() {
-            Ok((mut height, ..)) => {
-                let mut is_sync = true;
-                if Some(height) <= known_height {
-                    while let Err(err) = self
-                        .handler
-                        .wait_for_height(known_height.ok_or(error!("known height not found"))?)
-                    {
-                        plugin.log(LogLevel::Info, &format!("Waiting for block {height}...."));
-                        plugin.log(
-                            LogLevel::Debug,
-                            &format!("while waiting the block we get an error {err}"),
-                        )
-                    }
-                    height = known_height.ok_or(error!("known height not found"))?;
-                } else {
-                    is_sync = false;
-                }
-                let mut resp = json_utils::init_payload();
-                let height: i64 = height.try_into().map_err(|err| error!("{err}"))?;
-                json_utils::add_number(&mut resp, "headercount", height);
-                json_utils::add_number(&mut resp, "blockcount", height);
-                let network = match self.network {
-                    Network::Mainnet => "main",
-                    Network::Testnet => "test",
-                    Network::Regtest => "regtest",
-                    Network::Signet => "signet",
-                };
-                json_utils::add_str(&mut resp, "chain", network);
-                json_utils::add_bool(&mut resp, "ibd", is_sync);
-                Ok(resp)
+        let (mut height, ..) = self.handler.get_tip().map_err(|err| error!("{err}"))?;
+        let syncing = if let Some(known_height) = known_height {
+            // Wait to sync :)
+            plugin.log(
+                LogLevel::Debug,
+                "nakamoto is out of sync, so we syncing it. It will take a time",
+            );
+            while known_height > height {
+                let (new_height, ..) = self.handler.get_tip().map_err(|err| error!("{err}"))?;
+                height = new_height;
             }
-            Err(err) => Err(error!("{err}")),
-        }
+            known_height > height
+        } else {
+            false
+        };
+        let mut resp = json_utils::init_payload();
+        let height: i64 = height.try_into().map_err(|err| error!("{err}"))?;
+        json_utils::add_number(&mut resp, "headercount", height);
+        json_utils::add_number(&mut resp, "blockcount", height);
+        let network = match self.network {
+            Network::Mainnet => "main",
+            Network::Testnet => "test",
+            Network::Regtest => "regtest",
+            Network::Signet => "signet",
+        };
+        json_utils::add_str(&mut resp, "chain", network);
+        json_utils::add_bool(&mut resp, "ibd", syncing);
+        Ok(resp)
     }
 
     // FIXME: we can use the neutrino API here that it is just a json
