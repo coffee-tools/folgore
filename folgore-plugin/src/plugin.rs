@@ -53,6 +53,7 @@ impl PluginState {
             BackendKind::Nakamoto => {
                 let config = Config {
                     network: Network::from_str(&conf.network).map_err(|err| error!("{err}"))?,
+                    root: conf.lightning_dir.clone().into(),
                     ..Default::default()
                 };
                 let client = Esplora::new(
