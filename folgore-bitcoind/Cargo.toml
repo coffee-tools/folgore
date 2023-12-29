@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 folgore-common = { path = "../folgore-common" }
 bitcoincore-rpc = "0.17.0"
+serde = "1.0"

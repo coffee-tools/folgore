@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 
+use folgore_common::client::fee_estimator::{FeeEstimator, FeePriority, FEE_RATES};
 use log::{debug, info};
 use serde_json::json;
 
@@ -206,27 +207,22 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             .recovery_strategy
             .apply(|| self.client.get_fee_estimates().map_err(from))?;
 
-        // FIXME: if some of the valus is none, we should return
-        // a empity response to cln, see the satoshi backend docs
-        let hight =
-            fee_in_range(&fee_rates, 2, 10).ok_or(error!("fee in the range [2, 10] not found"))?;
-        let urgent =
-            fee_in_range(&fee_rates, 6, 15).ok_or(error!("fee in the range [6, 15] not found"))?;
-        let normal = fee_in_range(&fee_rates, 12, 24)
-            .ok_or(error!("fee in the range [12, 24] not found"))?;
-        let slow = fee_in_range(&fee_rates, 60, 170)
-            .ok_or(error!("fee in the range [60, 17] not found"))?;
-
-        // FIXME: manage to return an empty response when there is some error
-        let mut resp = json_utils::init_payload();
-        json_utils::add_number(&mut resp, "opening", normal);
-        json_utils::add_number(&mut resp, "mutual_close", slow);
-        json_utils::add_number(&mut resp, "unilateral_close", urgent);
-        json_utils::add_number(&mut resp, "delayed_to_us", normal);
-        json_utils::add_number(&mut resp, "htlc_resolution", urgent);
-        json_utils::add_number(&mut resp, "penalty", normal);
-        json_utils::add_number(&mut resp, "min_acceptable", slow / 2);
-        json_utils::add_number(&mut resp, "max_acceptable", hight * 10);
+        let mut fee_map = HashMap::new();
+        // FIXME: missing the mempool min fee, we should make a better soltution here
+        let fee = fee_in_range(&fee_rates, 6, 10)
+            .expect("mempool minimum fee range not able to calculate");
+        fee_map.insert(0, fee as u64);
+        for FeePriority(block, _) in FEE_RATES.iter().cloned() {
+            let diff = block as u64;
+            let Some(fee) = fee_in_range(&fee_rates, block.into(), (block + 3).into()) else {
+                continue;
+            };
+            fee_map.insert(diff, fee as u64);
+        }
+        if fee_map.len() != FEE_RATES.len() + 1 {
+            return FeeEstimator::null_estimate_fees();
+        }
+        let resp = FeeEstimator::build_estimate_fees(&fee_map)?;
         Ok(resp)
     }
 

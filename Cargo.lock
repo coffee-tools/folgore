@@ -377,6 +377,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoincore-rpc",
  "folgore-common",
+ "serde",
 ]
 
 [[package]]
