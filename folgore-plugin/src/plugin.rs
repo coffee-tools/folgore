@@ -122,7 +122,7 @@ pub fn build_plugin() -> Plugin<PluginState> {
         .add_opt(
             "bitcoin-client",
             "string",
-            Some("esplora".to_owned()),
+            Some("nakamoto".to_owned()),
             "Set up the client to use",
             false,
         )
@@ -143,7 +143,7 @@ pub fn build_plugin() -> Plugin<PluginState> {
         .add_opt(
             "bitcoin-esplora-url",
             "string",
-            Some(String::new()),
+            None,
             "A custom esplora backend url where to fetch the bitcoin data",
             false,
         )

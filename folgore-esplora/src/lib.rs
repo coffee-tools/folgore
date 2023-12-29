@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 
-use folgore_common::client::fee_estimator::{FeeEstimator, FeePriority, FEE_RATES};
 use log::{debug, info};
 use serde_json::json;
 
@@ -11,6 +10,7 @@ use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
 use esplora_client::{deserialize, serialize, BlockSummary};
 use esplora_client::{BlockingClient, Builder};
 
+use folgore_common::client::fee_estimator::{FeeEstimator, FeePriority, FEE_RATES};
 use folgore_common::client::FolgoreBackend;
 use folgore_common::cln;
 use folgore_common::cln::json_utils;
