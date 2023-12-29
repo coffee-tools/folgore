@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use bitcoincore_rpc::bitcoin::consensus::{deserialize, serialize};
+use bitcoincore_rpc::bitcoin::secp256k1::serde::{Deserialize, Serialize};
 use bitcoincore_rpc::bitcoin::Transaction;
 use bitcoincore_rpc::bitcoin::Txid;
 use bitcoincore_rpc::bitcoincore_rpc_json::EstimateMode;
@@ -103,7 +104,18 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
         &self,
         _: &mut plugin::Plugin<T>,
     ) -> Result<json::Value, errors::PluginError> {
+        #[derive(Serialize, Deserialize)]
+        pub struct MinimumMempoolFee {
+            pub mempoolminfee: f32,
+        }
+
         let mut fee_map = HashMap::new();
+        let fee: MinimumMempoolFee = self
+            .client
+            .call("getmempoolinfo", &[])
+            .map_err(|err| error!("{err}"))?;
+        let fee = fee.mempoolminfee;
+        fee_map.insert(0, (fee * 10000.0) as u64);
         for FeePriority(block, target) in FEE_RATES.iter().cloned() {
             let diff = block as u64;
             let mode = match target {
