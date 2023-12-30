@@ -4,11 +4,10 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use log::{debug, info};
+use serde::Deserialize;
 use serde_json::json;
 
-use esplora_client::api::{FromHex, Transaction, TxOut, Txid};
-use esplora_client::{deserialize, serialize, BlockSummary};
-use esplora_client::{BlockingClient, Builder};
+use esplora_api::EsploraAPI;
 
 use folgore_common::client::fee_estimator::{FeeEstimator, FeePriority, FEE_RATES};
 use folgore_common::client::FolgoreBackend;
@@ -16,7 +15,6 @@ use folgore_common::cln;
 use folgore_common::cln::json_utils;
 use folgore_common::cln::plugin::error;
 use folgore_common::cln::plugin::errors::PluginError;
-use folgore_common::cln::plugin::types::LogLevel;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::ByteBuf;
 use folgore_common::utils::{bitcoin_hashes, hex};
@@ -80,7 +78,7 @@ fn from<T: Display>(value: T) -> PluginError {
 
 #[derive(Clone)]
 pub struct Esplora<R: RecoveryStrategy> {
-    client: BlockingClient,
+    client: Arc<EsploraAPI>,
     recovery_strategy: Arc<R>,
 }
 
@@ -92,9 +90,9 @@ impl<R: RecoveryStrategy> Esplora<R> {
             let network = Network::try_from(network)?;
             network.url()
         };
-        let builder = Builder::new(&url);
+        let builder = EsploraAPI::new(&url).map_err(|err| error!("{err}"))?;
         Ok(Self {
-            client: builder.build_blocking().map_err(|err| error!("{err}"))?,
+            client: Arc::new(builder),
             recovery_strategy: strategy,
         })
     }
@@ -110,6 +108,11 @@ fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option
     None
 }
 
+fn raw_to_num(buff: &[u8]) -> i64 {
+    let buf = String::from_utf8(buff.to_vec()).expect("impossible convert the buff to a string");
+    buf.parse().expect("impossible parse a string into a i64")
+}
+
 impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
     fn kind(&self) -> folgore_common::client::BackendKind {
         folgore_common::client::BackendKind::Esplora
@@ -117,7 +120,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_block_by_height(
         &self,
-        plugin: &mut cln::plugin::plugin::Plugin<T>,
+        _: &mut cln::plugin::plugin::Plugin<T>,
         height: u64,
     ) -> Result<serde_json::Value, PluginError> {
         let fail_resp = json!({
@@ -125,53 +128,37 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             "block": null,
         });
 
-        let chain_tip = self
-            .recovery_strategy
-            .apply(|| self.client.get_height().map_err(|err| error!("{err}")))
-            .map_err(|err| error!("{err}"))?;
-        if height > chain_tip.into() {
-            let resp = json!({
-                "blockhash": null,
-                "block": null,
-            });
-            return Ok(resp);
-        }
-        // Check if the blocks that core lightning wants exist.
         let current_height = self
             .recovery_strategy
-            .apply(|| self.client.get_height().map_err(|err| error!("{err}")))
+            .apply(|| {
+                self.client
+                    .raw_call("/blocks/tip/height")
+                    .map_err(|err| error!("{err}"))
+                    .map(|raw| raw_to_num(&raw))
+            })
             .map_err(|err| error!("{err}"))?;
-        if current_height < height as u32 {
-            plugin.log(
-                LogLevel::Debug,
-                &format!("requesting block out of best chain. Block height wanted: {height}"),
-            );
+        if height > current_height as u64 {
             return Ok(fail_resp);
         }
-
         // Now that we are sure that the block exist we can requesting it
-        let block: Vec<BlockSummary> = self.recovery_strategy.apply(|| {
+        let block_hash = self.recovery_strategy.apply(|| {
             self.client
-                .get_blocks(Some(height.try_into().expect("height convertion fails")))
+                .raw_call(&format!("/block-height/{height}"))
                 .map_err(|err| error!("{err}"))
+                .and_then(|raw| String::from_utf8(raw).map_err(|err| error!("{err}")))
         })?;
-        let block_hash = block.first().ok_or(error!("block not found"))?;
-        let block_hash = block_hash.id;
 
-        let block = self
-            .recovery_strategy
-            .apply(|| self.client.get_block_by_hash(&block_hash).map_err(from))?;
+        let block = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_call(&format!("/block/{block_hash}/raw"))
+                .map_err(from)
+        })?;
 
         let mut response = json_utils::init_payload();
-        if let Some(block) = block {
-            json_utils::add_str(&mut response, "blockhash", &block_hash.to_string());
-            let ser = serialize(&block);
-            let bytes = ByteBuf(ser.as_slice());
-            json_utils::add_str(&mut response, "block", &format!("{:02x}", bytes));
-            return Ok(response);
-        }
-        debug!("block not found!");
-        Ok(fail_resp)
+        json_utils::add_str(&mut response, "blockhash", &block_hash);
+        let bytes = ByteBuf(&block);
+        json_utils::add_str(&mut response, "block", &format!("{:02x}", bytes));
+        Ok(response)
     }
 
     fn sync_chain_info(
@@ -179,25 +166,38 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         _: &mut cln::plugin::plugin::Plugin<T>,
         _: Option<u64>,
     ) -> Result<serde_json::Value, PluginError> {
-        let current_height = self.client.get_height().map_err(from)?;
-        info!("blockchain height: {current_height}");
-        let genesis = self
+        let current_height = self
             .recovery_strategy
-            .apply(|| self.client.get_blocks(Some(0)).map_err(from))?;
+            .apply(|| {
+                self.client
+                    .raw_call("/blocks/tip/height")
+                    .map_err(|err| error!("{err}"))
+                    .map(|raw| raw_to_num(&raw))
+            })
+            .map_err(|err| error!("{err}"))?;
 
-        let genesis = genesis.first().ok_or(error!("genesis block not found"))?;
-        let network = match genesis.id.to_string().as_str() {
+        info!("blockchain height: {current_height}");
+
+        // Now that we are sure that the block exist we can requesting it
+        let genesis = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_call("/block-height/0")
+                .map_err(|err| error!("{err}"))
+                .and_then(|raw| String::from_utf8(raw).map_err(|err| error!("{err}")))
+        })?;
+
+        let network = match genesis.as_str() {
             "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f" => "main",
             "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943" => "test",
             "00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6" => "signet",
             "1466275836220db2944ca059a3a10ef6fd2ea684b0688d2c379296888a206003" => "liquidv1",
-            _ => return Err(error!("wrong chain hash {}", genesis.id)),
+            _ => return Err(error!("wrong chain hash {}", genesis)),
         };
 
         let mut response = json_utils::init_payload();
         json_utils::add_str(&mut response, "chain", network);
-        json_utils::add_number(&mut response, "headercount", current_height.into());
-        json_utils::add_number(&mut response, "blockcount", current_height.into());
+        json_utils::add_number(&mut response, "headercount", current_height);
+        json_utils::add_number(&mut response, "blockcount", current_height);
         json_utils::add_bool(&mut response, "ibd", false);
         Ok(response)
     }
@@ -206,9 +206,11 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         &self,
         _: &mut cln::plugin::plugin::Plugin<T>,
     ) -> Result<serde_json::Value, PluginError> {
-        let fee_rates = self
-            .recovery_strategy
-            .apply(|| self.client.get_fee_estimates().map_err(from))?;
+        let fee_rates = self.recovery_strategy.apply(|| {
+            self.client
+                .call::<HashMap<String, f64>>("/fee-estimates")
+                .map_err(from)
+        })?;
 
         let mut fee_map = HashMap::new();
         // FIXME: missing the mempool min fee, we should make a better soltution here
@@ -235,22 +237,28 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         txid: &str,
         idx: u64,
     ) -> Result<serde_json::Value, PluginError> {
-        let txid = Txid::from_hex(txid).map_err(from)?;
+        #[derive(Deserialize)]
+        struct TxOut {
+            value: u64,
+            scriptpubkey: String,
+        }
+
+        #[derive(Deserialize)]
+        struct Tx {
+            vout: Vec<TxOut>,
+        }
+
+        let txid = txid.to_string();
         let utxo = self
             .recovery_strategy
-            .apply(|| self.client.get_tx(&txid).map_err(from))?;
+            .apply(|| self.client.call::<Tx>(&format!("/tx/{txid}")).map_err(from))?;
 
         let mut resp = json_utils::init_payload();
-        if let Some(tx) = utxo {
-            let output: TxOut = tx.output[idx as usize].clone();
-            json_utils::add_number(&mut resp, "amount", output.value.try_into().map_err(from)?);
-            json_utils::add_str(&mut resp, "script", &format!("{:x}", output.script_pubkey));
-            return Ok(resp);
-        }
-        Ok(json!({
-            "amount": null,
-            "script": null,
-        }))
+        let output = &utxo.vout[idx as usize];
+
+        json_utils::add_number(&mut resp, "amount", output.value.try_into().map_err(from)?);
+        json_utils::add_str(&mut resp, "script", &output.scriptpubkey);
+        Ok(resp)
     }
 
     fn sync_send_raw_transaction(
@@ -260,12 +268,10 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         _with_hight_fee: bool,
     ) -> Result<serde_json::Value, PluginError> {
         let tx = hex!(tx);
-        let tx: Result<Transaction, _> = deserialize(&tx);
         debug!("the transaction deserialised is {:?}", tx);
-        let tx = tx.map_err(from)?;
         let tx_send = self
             .recovery_strategy
-            .apply(|| Ok(self.client.broadcast(&tx)))?;
+            .apply(|| Ok(self.client.raw_post("/tx", &tx)))?;
 
         let mut resp = json_utils::init_payload();
         json_utils::add_bool(&mut resp, "success", tx_send.is_ok());
