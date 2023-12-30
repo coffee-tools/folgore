@@ -1,5 +1,5 @@
 //! Generic Fee estimator for all the folgore backend.
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::prelude::cln::json_utils;
 use crate::prelude::cln_plugin::error;
@@ -24,23 +24,23 @@ pub static FEE_RATES: [FeePriority; 4] = [
 pub struct FeeEstimator;
 
 impl FeeEstimator {
-    pub fn urgent_fee(fees: &HashMap<u64, FeeRate>) -> Option<FeeRate> {
+    pub fn urgent_fee(fees: &BTreeMap<u64, FeeRate>) -> Option<FeeRate> {
         fees.get(&6).copied()
     }
 
-    pub fn hightest_fee(fees: &HashMap<u64, FeeRate>) -> Option<FeeRate> {
+    pub fn hightest_fee(fees: &BTreeMap<u64, FeeRate>) -> Option<FeeRate> {
         fees.get(&2).copied()
     }
 
-    pub fn normal_fee(fees: &HashMap<u64, FeeRate>) -> Option<FeeRate> {
+    pub fn normal_fee(fees: &BTreeMap<u64, FeeRate>) -> Option<FeeRate> {
         fees.get(&12).copied()
     }
 
-    pub fn slow_fee(fees: &HashMap<u64, FeeRate>) -> Option<FeeRate> {
+    pub fn slow_fee(fees: &BTreeMap<u64, FeeRate>) -> Option<FeeRate> {
         fees.get(&100).copied()
     }
 
-    pub fn build_estimate_fees(fees: &HashMap<u64, FeeRate>) -> Result<Value, PluginError> {
+    pub fn build_estimate_fees(fees: &BTreeMap<u64, FeeRate>) -> Result<Value, PluginError> {
         let mut resp = json_utils::init_payload();
 
         json_utils::add_number(

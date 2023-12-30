@@ -5,7 +5,7 @@
 //!
 //! Author: Vincenzo Palazzo <vincenzopalazzo@member.fsf.org>
 #![deny(clippy::unwrap_used)]
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::str::FromStr;
 
 use bitcoincore_rpc::bitcoin::consensus::{deserialize, serialize};
@@ -109,7 +109,7 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
             pub mempoolminfee: f32,
         }
 
-        let mut fee_map = HashMap::new();
+        let mut fee_map = BTreeMap::new();
         let fee: MinimumMempoolFee = self
             .client
             .call("getmempoolinfo", &[])
