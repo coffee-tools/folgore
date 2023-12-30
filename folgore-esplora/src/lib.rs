@@ -1,4 +1,5 @@
 #![deny(clippy::unwrap_used)]
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -217,7 +218,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
                 .map_err(from)
         })?;
 
-        let mut fee_map = HashMap::new();
+        let mut fee_map = BTreeMap::new();
         // FIXME: missing the mempool min fee, we should make a better soltution here
         let fee = fee_in_range(&fee_rates, 2, 20)
             .expect("mempool minimum fee range not able to calculate");
