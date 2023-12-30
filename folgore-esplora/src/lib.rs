@@ -15,6 +15,7 @@ use folgore_common::cln;
 use folgore_common::cln::json_utils;
 use folgore_common::cln::plugin::error;
 use folgore_common::cln::plugin::errors::PluginError;
+use folgore_common::prelude::log;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::ByteBuf;
 use folgore_common::utils::{bitcoin_hashes, hex};
@@ -105,6 +106,10 @@ fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option
             return Some(estimation[key] as i64);
         }
     }
+    log::info!(
+        "fee rate not found for target {from} in the range map {:?}",
+        estimation,
+    );
     None
 }
 
@@ -214,12 +219,14 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
         let mut fee_map = HashMap::new();
         // FIXME: missing the mempool min fee, we should make a better soltution here
-        let fee = fee_in_range(&fee_rates, 6, 10)
+        let fee = fee_in_range(&fee_rates, 2, 20)
             .expect("mempool minimum fee range not able to calculate");
         fee_map.insert(0, fee as u64);
         for FeePriority(block, _) in FEE_RATES.iter().cloned() {
             let diff = block as u64;
-            let Some(fee) = fee_in_range(&fee_rates, block.into(), (block + 3).into()) else {
+            // Take a good range of blocks because esplora estimate bloks really bad
+            // but with this + 100 we should be enough good to get what we want
+            let Some(fee) = fee_in_range(&fee_rates, block.into(), (block + 100).into()) else {
                 continue;
             };
             fee_map.insert(diff, fee as u64);
