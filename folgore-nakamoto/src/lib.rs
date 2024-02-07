@@ -8,10 +8,8 @@ use std::thread::JoinHandle;
 
 use nakamoto_client::handle::Handle;
 use nakamoto_common::bitcoin::consensus::{deserialize, serialize};
-use nakamoto_common::bitcoin_hashes::hex::ToHex;
-use nakamoto_common::block::{Height, Transaction};
+use nakamoto_common::block::{Block, Height, Transaction};
 use nakamoto_net_poll::{Reactor, Waker};
-use serde_json::{json, Value};
 
 use folgore_common::client::FolgoreBackend;
 use folgore_common::cln::json_utils;
@@ -19,8 +17,10 @@ use folgore_common::cln::plugin::error;
 use folgore_common::cln::plugin::errors::PluginError;
 use folgore_common::cln::plugin::plugin::Plugin;
 use folgore_common::prelude::cln_plugin::types::LogLevel;
+use folgore_common::prelude::json;
+use folgore_common::prelude::json::Value;
 use folgore_common::stragegy::RecoveryStrategy;
-use folgore_common::utils::{bitcoin_hashes, hex};
+use folgore_common::utils::{bitcoin_hashes, hex, ByteBuf};
 use folgore_esplora::Esplora;
 
 pub use nakamoto_client::Config;
@@ -71,22 +71,25 @@ impl<T: Clone, R: RecoveryStrategy> FolgoreBackend<T> for Nakamoto<R> {
         folgore_common::client::BackendKind::Nakamoto
     }
 
-    fn sync_block_by_height(&self, _p: &mut Plugin<T>, height: u64) -> Result<Value, PluginError> {
+    fn sync_block_by_height(
+        &self,
+        plugin: &mut Plugin<T>,
+        height: u64,
+    ) -> Result<Value, PluginError> {
         let mut response = json_utils::init_payload();
         let header = self.handler.get_block_by_height(height).map_err(from)?;
         let blk_chan = self.handler.blocks();
         if header.is_none() {
-            return Ok(json!({
+            return Ok(json::json!({
                 "blockhash": null,
                 "block": null,
             }));
         }
 
         let header = header.ok_or(error!("header not found inside the block"))?;
-        if let Err(err) = self.handler.request_block(&header.block_hash()) {
-            return Err(error!("{err}"));
-        }
-
+        self.handler
+            .request_block(&header.block_hash())
+            .map_err(|err| error!("{err}"))?;
         self.current_height
             .lock()
             .map_err(|err| error!("{err}"))?
@@ -99,7 +102,10 @@ impl<T: Clone, R: RecoveryStrategy> FolgoreBackend<T> for Nakamoto<R> {
 
         let (blk, _) = blk_chan.recv().map_err(|err| error!("{err}"))?;
         let serialize = serialize(&blk);
-        let ser_str = serialize.as_slice().to_hex();
+        let _: Block = deserialize(&serialize).map_err(|err| error!("{err}"))?;
+        let ser_str = serialize.as_slice();
+        let ser_str = format!("{:20x}", ByteBuf(ser_str));
+        plugin.log(LogLevel::Debug, "block by height: {ser_str}");
         json_utils::add_str(&mut response, "block", &ser_str);
         Ok(response)
     }

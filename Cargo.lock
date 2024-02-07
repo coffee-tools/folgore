@@ -138,7 +138,6 @@ version = "0.3.0-beta.8"
 source = "git+https://github.com/laanwj/cln4rust.git#d4cb15cb48299f0048ed226020baf670e3f82156"
 dependencies = [
  "clightningrpc-common 0.3.0-beta.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "log",
  "serde",
  "serde_json",
 ]
