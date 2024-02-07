@@ -22,8 +22,9 @@ use folgore_common::Result;
 /// Esplora implement something similar, and we work around
 /// with this strategy.
 pub struct TimeoutRetry {
-    pub timeout: RefCell<Duration>,
-    pub times: RefCell<u8>,
+    pub(crate) timeout: RefCell<Duration>,
+    pub(crate) retry_state: RefCell<u8>,
+    pub(crate) times: u8,
 }
 
 // SAFETY: All the backend request and blocking
@@ -34,7 +35,8 @@ impl TimeoutRetry {
     pub fn new(duration: Option<Duration>) -> Self {
         Self {
             timeout: RefCell::new(duration.unwrap_or(Duration::from_secs(60))),
-            times: RefCell::new(4),
+            retry_state: RefCell::new(0),
+            times: 4,
         }
     }
 }
@@ -54,13 +56,13 @@ impl RecoveryStrategy for TimeoutRetry {
         while result.is_err() {
             log::info!(
                 "running into retry logic due a request failing. Time `{}` waiting `{}` secs",
-                *self.times.borrow(),
+                self.times,
                 self.timeout.borrow().as_secs()
             );
-            if self.times.borrow().eq(&4) {
+            if self.retry_state.borrow().eq(&self.times) {
                 log::info!(
                     "we try {} times the request but the error persist",
-                    self.times.borrow()
+                    *self.retry_state.borrow()
                 );
                 log::debug!(
                     "Error during the recovery strategy: `{:?}`",
@@ -79,9 +81,54 @@ impl RecoveryStrategy for TimeoutRetry {
             log::info!("Waiting timeout end");
             // now we increase the timeout
             self.timeout.borrow_mut().mul_assign(2);
-            self.times.borrow_mut().add_assign(1);
+            self.retry_state.borrow_mut().add_assign(1);
             result = cb();
         }
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use folgore_common::prelude::cln_plugin::error;
+    use folgore_common::prelude::cln_plugin::errors::PluginError;
+
+    use super::{RecoveryStrategy, TimeoutRetry};
+
+    use crate::configure_tests;
+
+    #[test]
+    fn test_simple_retry() {
+        configure_tests();
+        let strategy = TimeoutRetry::new(Some(Duration::from_millis(10)));
+
+        let err: Result<(), PluginError> = strategy.apply(|| Err(error!("")));
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn test_state_strategy_one() {
+        configure_tests();
+        let strategy = TimeoutRetry::new(Some(Duration::from_millis(10)));
+
+        let _: Result<(), PluginError> = strategy.apply(|| Err(error!("")));
+        assert_eq!(*strategy.retry_state.borrow(), 4);
+        let mut time = 10;
+        for _ in 0..4 {
+            time = time * 2;
+        }
+        assert_eq!(*strategy.timeout.borrow(), Duration::from_millis(time));
+    }
+
+    #[test]
+    fn test_state_strategy_two() {
+        configure_tests();
+        let strategy = TimeoutRetry::new(Some(Duration::from_millis(10)));
+
+        let _: Result<(), PluginError> = strategy.apply(|| Ok(()));
+        assert_eq!(*strategy.retry_state.borrow(), 0);
+        assert_eq!(*strategy.timeout.borrow(), Duration::from_millis(10));
     }
 }
