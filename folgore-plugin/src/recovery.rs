@@ -117,7 +117,7 @@ mod tests {
         assert_eq!(*strategy.retry_state.borrow(), 4);
         let mut time = 10;
         for _ in 0..4 {
-            time = time * 2;
+            time *= 2;
         }
         assert_eq!(*strategy.timeout.borrow(), Duration::from_millis(time));
     }
