@@ -257,15 +257,32 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         }
 
         let txid = txid.to_string();
-        let utxo = self
-            .recovery_strategy
-            .apply(|| self.client.call::<Tx>(&format!("/tx/{txid}")).map_err(from))?;
+        let utxo = self.recovery_strategy.apply(|| {
+            let result = self.client.call::<Tx>(&format!("/tx/{txid}"));
+            if let Err(err) = result {
+                let err_code = err.code();
+                if err_code == 404 {
+                    return Ok(Tx { vout: vec![] });
+                } else {
+                    return Err(error!("{err}"));
+                }
+            }
+            // SAFETY: Checking before so we should be safe to unwrap here
+            #[allow(clippy::unwrap_used)]
+            Ok(result.unwrap())
+        })?;
 
         let mut resp = json_utils::init_payload();
-        let output = &utxo.vout[idx as usize];
-
-        json_utils::add_number(&mut resp, "amount", output.value.try_into().map_err(from)?);
-        json_utils::add_str(&mut resp, "script", &output.scriptpubkey);
+        if utxo.vout.is_empty() {
+            resp = json!({
+                "amount": null,
+                "script": null,
+            });
+        } else {
+            let output = &utxo.vout[idx as usize];
+            json_utils::add_number(&mut resp, "amount", output.value.try_into().map_err(from)?);
+            json_utils::add_str(&mut resp, "script", &output.scriptpubkey);
+        }
         Ok(resp)
     }
 
