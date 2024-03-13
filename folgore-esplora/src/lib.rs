@@ -16,6 +16,7 @@ use folgore_common::cln;
 use folgore_common::cln::json_utils;
 use folgore_common::cln::plugin::error;
 use folgore_common::cln::plugin::errors::PluginError;
+use folgore_common::cln::plugin::types::LogLevel;
 use folgore_common::prelude::log;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::ByteBuf;
@@ -241,7 +242,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_get_utxo(
         &self,
-        _: &mut cln::plugin::plugin::Plugin<T>,
+        plugin: &mut cln::plugin::plugin::Plugin<T>,
         txid: &str,
         idx: u64,
     ) -> Result<serde_json::Value, PluginError> {
@@ -260,8 +261,15 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         let utxo = self.recovery_strategy.apply(|| {
             let result = self.client.call::<Tx>(&format!("/tx/{txid}"));
             if let Err(err) = result {
+                log::debug!("call to `tx/{txid}` API return error: {:?}", err);
                 let err_code = err.code();
                 if err_code == 404 {
+                    return Ok(Tx { vout: vec![] });
+                } else if err_code == 400 {
+                    plugin.log(
+                        LogLevel::Warn,
+                        &format!("error from esplora API `{:?}`", err),
+                    );
                     return Ok(Tx { vout: vec![] });
                 } else {
                     return Err(error!("{err}"));
