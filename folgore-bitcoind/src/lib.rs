@@ -27,6 +27,7 @@ use folgore_common::prelude::cln_plugin::errors;
 use folgore_common::prelude::cln_plugin::errors::PluginError;
 use folgore_common::prelude::cln_plugin::plugin;
 use folgore_common::prelude::json;
+use folgore_common::prelude::log;
 use folgore_common::utils::ByteBuf;
 
 pub struct BitcoinCore {
@@ -180,8 +181,9 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
         let hex_tx = hex!(raw_tx);
         let tx: Transaction = deserialize(&hex_tx).map_err(|err| error!("{err}"))?;
         let result = self.client.send_raw_transaction(&tx);
+        log::info!("{:?}", result);
         Ok(json::json!({
-           "success": result.is_ok(),
+            "success": result.is_ok(),
             "errmsg": result.err().map(|err| err.to_string()),
         }))
     }

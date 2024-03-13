@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 
-use log::{debug, info};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -20,7 +19,6 @@ use folgore_common::cln::plugin::types::LogLevel;
 use folgore_common::prelude::log;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::ByteBuf;
-use folgore_common::utils::{bitcoin_hashes, hex};
 
 #[derive(Clone)]
 enum Network {
@@ -183,7 +181,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             })
             .map_err(|err| error!("{err}"))?;
 
-        info!("blockchain height: {current_height}");
+        log::info!("blockchain height: {current_height}");
 
         // Now that we are sure that the block exist we can requesting it
         let genesis = self.recovery_strategy.apply(|| {
@@ -300,12 +298,8 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         tx: &str,
         _with_hight_fee: bool,
     ) -> Result<serde_json::Value, PluginError> {
-        let tx = hex!(tx);
-        debug!("the transaction deserialised is {:?}", tx);
-        let tx_send = self
-            .recovery_strategy
-            .apply(|| Ok(self.client.raw_post("/tx", &tx)))?;
-
+        let tx_send = self.client.raw_post("/tx", tx.as_bytes());
+        log::info!("{:?}", tx_send.as_ref().map(|b| String::from_utf8_lossy(b)));
         let mut resp = json_utils::init_payload();
         json_utils::add_bool(&mut resp, "success", tx_send.is_ok());
         if let Err(err) = tx_send {
