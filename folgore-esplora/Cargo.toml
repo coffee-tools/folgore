@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 folgore-common = { path = "../folgore-common" }
-esplora-api = { git = "https://git.hedwing.dev/dev-crew/btc-utils" }
+esplora-api = { git = "https://github.com/dev-crew-host/btc-utils.git" }
 serde_json = "1"
 serde = "1"

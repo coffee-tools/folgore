@@ -291,7 +291,7 @@ dependencies = [
 [[package]]
 name = "esplora-api"
 version = "0.1.0"
-source = "git+https://git.hedwing.dev/dev-crew/btc-utils#f377c119cf57b76546a02efd8ed4fa3a57716388"
+source = "git+https://github.com/dev-crew-host/btc-utils.git#f09cd5f1e3e952b5978cdcb927a1b22906524a83"
 dependencies = [
  "curl",
  "serde",
