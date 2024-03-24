@@ -2,6 +2,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use clightningrpc_plugin_macros::notification;
 use clightningrpc_plugin_macros::plugin;
 use clightningrpc_plugin_macros::rpc_method;
 use serde_json::{json, Value};
@@ -208,6 +209,11 @@ fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
     }
 
     json!({})
+}
+
+#[notification(on = "shutdown")]
+fn on_shutdown(plugin: &mut Plugin<PluginState>, _: &Value) -> Result<Value, PluginError> {
+    std::process::exit(0);
 }
 
 #[rpc_method(

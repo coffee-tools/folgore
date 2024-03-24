@@ -130,6 +130,12 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
             let Ok(fees) = self.client.estimate_smart_fee(block, Some(mode)) else {
                 continue;
             };
+
+            log::debug!(
+                "bitcoincore estimate fees: (`{block}` `{:?}`) -> {}",
+                mode,
+                json::to_string(&fees).expect("should not fail")
+            );
             let Some(fee) = fees.fee_rate else {
                 continue;
             };

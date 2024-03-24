@@ -3,9 +3,12 @@ mod model;
 mod plugin;
 mod recovery;
 
-fn main() {
+use std::io;
+
+fn main() -> io::Result<()> {
     let plugin = plugin::build_plugin();
-    plugin.start();
+    plugin.start()?;
+    Ok(())
 }
 
 #[cfg(test)]
