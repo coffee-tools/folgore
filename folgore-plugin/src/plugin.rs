@@ -100,12 +100,14 @@ pub fn build_plugin() -> Plugin<PluginState> {
     let mut plugin = plugin! {
         state: PluginState::new(),
         dynamic: false,
-        notification: [],
+        notification: [
+            on_shutdown,
+        ],
         methods: [
-           get_chain_info,
-           estimate_fees,
-           get_raw_block_by_height,
-           getutxout,
+            get_chain_info,
+            estimate_fees,
+            get_raw_block_by_height,
+            getutxout,
             send_rawtransaction,
 
         ],
