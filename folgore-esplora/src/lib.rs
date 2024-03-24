@@ -217,6 +217,10 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
                 .map_err(from)
         })?;
 
+        log::debug!(
+            "sync_estimate_fees inner response: `{}`",
+            serde_json::to_string(&fee_rates).expect("should not failt")
+        );
         let mut fee_map = BTreeMap::new();
         // FIXME: missing the mempool min fee, we should make a better soltution here
         let fee = fee_in_range(&fee_rates, 2, 20)
