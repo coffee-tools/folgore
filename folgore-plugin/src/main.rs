@@ -5,9 +5,10 @@ mod recovery;
 
 use std::io;
 
-fn main() -> io::Result<()> {
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let plugin = plugin::build_plugin();
-    plugin.start()?;
+    plugin.start().await;
     Ok(())
 }
 
