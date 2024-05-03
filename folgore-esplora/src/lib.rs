@@ -257,18 +257,18 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
         let txid = txid.to_string();
         let utxo = self.recovery_strategy.apply(|| {
-            let result = self.client.call::<Tx>(&format!("/tx/{txid}"));
+            let result = self.client.call::<Option<Tx>>(&format!("/tx/{txid}"));
             if let Err(err) = result {
                 log::debug!("call to `tx/{txid}` API return error: {:?}", err);
                 let err_code = err.code();
                 if err_code == 404 {
-                    return Ok(Tx { vout: vec![] });
+                    return Ok(None);
                 } else if err_code == 400 {
                     plugin.log(
                         LogLevel::Warn,
                         &format!("error from esplora API `{:?}`", err),
                     );
-                    return Ok(Tx { vout: vec![] });
+                    return Ok(None);
                 } else {
                     return Err(error!("{err}"));
                 }
@@ -279,16 +279,16 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         })?;
 
         let mut resp = json_utils::init_payload();
-        if utxo.vout.is_empty() {
-            resp = json!({
+        let Some(utxo) = utxo else {
+            return Ok(json!({
                 "amount": null,
                 "script": null,
-            });
-        } else {
-            let output = &utxo.vout[idx as usize];
-            json_utils::add_number(&mut resp, "amount", output.value.try_into().map_err(from)?);
-            json_utils::add_str(&mut resp, "script", &output.scriptpubkey);
-        }
+            }));
+        };
+
+        let output = &utxo.vout[idx as usize];
+        json_utils::add_number(&mut resp, "amount", output.value.try_into().map_err(from)?);
+        json_utils::add_str(&mut resp, "script", &output.scriptpubkey);
         Ok(resp)
     }
 
