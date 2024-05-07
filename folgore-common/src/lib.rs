@@ -30,6 +30,7 @@ pub mod prelude {
 }
 
 pub mod cln {
+    pub use clightningrpc as rpc;
     pub use clightningrpc_common::*;
     pub use clightningrpc_plugin as plugin;
 }

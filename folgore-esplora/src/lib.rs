@@ -1,10 +1,11 @@
 #![deny(clippy::unwrap_used)]
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::fmt;
 use std::fmt::Display;
 use std::sync::Arc;
 
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::json;
 
 use esplora_api::EsploraAPI;
@@ -16,6 +17,7 @@ use folgore_common::cln::json_utils;
 use folgore_common::cln::plugin::error;
 use folgore_common::cln::plugin::errors::PluginError;
 use folgore_common::cln::plugin::types::LogLevel;
+use folgore_common::cln::rpc::LightningRPC;
 use folgore_common::prelude::log;
 use folgore_common::stragegy::RecoveryStrategy;
 use folgore_common::utils::ByteBuf;
@@ -81,10 +83,17 @@ fn from<T: Display>(value: T) -> PluginError {
 pub struct Esplora<R: RecoveryStrategy> {
     client: Arc<EsploraAPI>,
     recovery_strategy: Arc<R>,
+    /// CLN RPC path
+    cln_rpc_path: String,
 }
 
 impl<R: RecoveryStrategy> Esplora<R> {
-    pub fn new(network: &str, url: Option<String>, strategy: Arc<R>) -> Result<Self, PluginError> {
+    pub fn new(
+        network: &str,
+        url: Option<String>,
+        strategy: Arc<R>,
+        cln_path: &str,
+    ) -> Result<Self, PluginError> {
         let url = if let Some(url) = url {
             url
         } else {
@@ -95,7 +104,18 @@ impl<R: RecoveryStrategy> Esplora<R> {
         Ok(Self {
             client: Arc::new(builder),
             recovery_strategy: strategy,
+            cln_rpc_path: cln_path.to_string(),
         })
+    }
+
+    pub fn call<T: Serialize, U: DeserializeOwned + fmt::Debug>(
+        &self,
+        method: &str,
+        payload: T,
+    ) -> Result<U, PluginError> {
+        let rpc = LightningRPC::new(&self.cln_rpc_path);
+        let response: U = rpc.call(method, payload).map_err(|err| error!("{err}"))?;
+        Ok(response)
     }
 }
 
@@ -306,5 +326,67 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             json_utils::add_str(&mut resp, "errmsg", &err.to_string());
         }
         Ok(resp)
+    }
+
+    fn sync_dev_updateutxo(
+        &self,
+        plugin: &mut cln::plugin::plugin::Plugin<T>,
+        iamsure: bool,
+    ) -> Result<serde_json::Value, PluginError> {
+        log::info!("calling `sync_dev_updateutxo`");
+        #[derive(Deserialize, Debug, Clone)]
+        struct ListFunds {
+            outputs: Vec<Outputs>,
+        }
+
+        #[derive(Deserialize, Debug, Clone)]
+        struct Outputs {
+            txid: String,
+            output: u64,
+        }
+
+        let outputs: ListFunds = self.call("listfunds", serde_json::json!({}))?;
+        let mut changed = vec![];
+        for output in outputs.outputs {
+            #[derive(Deserialize, Serialize, Debug, Clone)]
+            struct Outspend {
+                spent: bool,
+                status: Option<serde_json::Value>,
+            }
+            let outspend: Outspend = self
+                .client
+                .call(&format!("/tx/{}/outspend/{}", output.txid, output.output))
+                .map_err(|err| error!("{err}"))?;
+            log::debug!("{:?}", outspend);
+
+            // if it is not spend the user should use dev-rescan-outputs
+            if !outspend.spent {
+                continue;
+            }
+
+            let spentheight = outspend
+                .clone()
+                .status
+                .ok_or(error!("status object not found `{:?}`", outspend))?;
+            #[allow(clippy::unwrap_used)]
+            let confirmed = spentheight.get("confirmed").unwrap().as_bool().unwrap();
+            if !confirmed {
+                continue;
+            }
+            #[allow(clippy::unwrap_used)]
+            let spentheight = spentheight.get("block_height").unwrap().as_i64().unwrap();
+            let _: serde_json::Value = self.call(
+                "dev-updateutxo",
+                serde_json::json!({
+                    "prev-txid": output.txid,
+                    "prev-vout": output.output,
+                    "status": 2, // FIXME: Create an 1-1 mapper with the C enum.
+                    "spentheight": spentheight,
+                    "iamsure": iamsure,
+                }),
+            )?;
+            changed.push(outspend);
+        }
+        Ok(serde_json::to_value(&changed).map_err(|err| error!("{err}"))?)
     }
 }

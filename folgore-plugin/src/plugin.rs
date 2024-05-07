@@ -1,9 +1,11 @@
 //! Plugin definition.
+use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
 
 use clightningrpc_plugin_macros::plugin;
 use clightningrpc_plugin_macros::rpc_method;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{json, Value};
 
 use folgore_bitcoind::BitcoinCore;
@@ -13,9 +15,11 @@ use folgore_common::cln::plugin::error;
 use folgore_common::cln::plugin::errors::PluginError;
 use folgore_common::cln::plugin::plugin::Plugin;
 use folgore_common::cln::plugin::types::LogLevel;
+use folgore_common::cln::rpc::LightningRPC;
 use folgore_esplora::Esplora;
 use folgore_nakamoto::{Config, Nakamoto, Network};
 
+use crate::model::DevUpdateUTxos;
 use crate::model::{BlockByHeight, GetChainInfo, GetUTxo, SendRawTx};
 use crate::recovery::TimeoutRetry;
 
@@ -28,6 +32,8 @@ pub struct PluginState {
     pub(crate) core_user: Option<String>,
     pub(crate) core_pass: Option<String>,
     pub(crate) _retry_strategy: Option<String>,
+    /// CLN RPC path
+    cln_rpc_path: Option<String>,
 }
 
 impl PluginState {
@@ -40,6 +46,7 @@ impl PluginState {
             core_pass: None,
             core_user: None,
             _retry_strategy: None,
+            cln_rpc_path: None,
         }
     }
 
@@ -49,6 +56,7 @@ impl PluginState {
         conf: &CLNConf,
     ) -> Result<Arc<dyn FolgoreBackend<PluginState>>, PluginError> {
         let client = BackendKind::try_from(client)?;
+        let rpc_path = format!("{}/{}", conf.lightning_dir, conf.rpc_file);
         match client {
             BackendKind::Nakamoto => {
                 let config = Config {
@@ -60,6 +68,7 @@ impl PluginState {
                     &conf.network,
                     self.esplora_url.to_owned(),
                     TimeoutRetry::default().into(),
+                    &rpc_path,
                 )?;
 
                 let client = Nakamoto::new(config, client).map_err(|err| error!("{err}"))?;
@@ -71,6 +80,7 @@ impl PluginState {
                     &conf.network,
                     self.esplora_url.to_owned(),
                     TimeoutRetry::default().into(),
+                    &rpc_path,
                 )?;
                 Ok(Arc::new(client))
             }
@@ -101,12 +111,12 @@ pub fn build_plugin() -> Plugin<PluginState> {
         dynamic: false,
         notification: [],
         methods: [
-           get_chain_info,
-           estimate_fees,
-           get_raw_block_by_height,
-           getutxout,
+            get_chain_info,
+            estimate_fees,
+            get_raw_block_by_height,
+            getutxout,
             send_rawtransaction,
-
+            dev_batch_utxupdate,
         ],
         hooks: [],
     };
@@ -388,6 +398,47 @@ fn send_rawtransaction(
         }
         let client = client.unwrap();
         result = client.sync_send_raw_transaction(plugin, &request.tx, request.allowhighfees);
+        let Ok(ref result) = result else {
+            plugin.log(
+                LogLevel::Warn,
+                &format!(
+                    "client `{}` return an error: {}",
+                    client.kind(),
+                    result.clone().err().unwrap()
+                ),
+            );
+            continue;
+        };
+        break;
+    }
+    result
+}
+
+#[rpc_method(
+    rpc_name = "dev-batch-utxoupdate",
+    description = "Please do not use it"
+)]
+fn dev_batch_utxupdate(
+    plugin: &mut Plugin<PluginState>,
+    request: Value,
+) -> Result<Value, PluginError> {
+    plugin.log(LogLevel::Debug, "call send raw transaction");
+    let client = plugin
+        .state
+        .client
+        .clone()
+        .ok_or(error!("Client must be not null at this point"))?;
+    let fallback = plugin.state.fallback.clone();
+    plugin.log(LogLevel::Info, &format!("cln request: {request}"));
+    let request: DevUpdateUTxos = serde_json::from_value(request)?;
+
+    let mut result: Result<Value, PluginError> = Err(error!("result never init"));
+    for client in [Some(client), fallback] {
+        if client.is_none() {
+            continue;
+        }
+        let client = client.unwrap();
+        result = client.sync_dev_updateutxo(plugin, request.iamsure);
         let Ok(ref result) = result else {
             plugin.log(
                 LogLevel::Warn,

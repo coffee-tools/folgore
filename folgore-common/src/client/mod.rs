@@ -96,4 +96,9 @@ pub trait FolgoreBackend<T: Clone> {
         _: &str,
         _: bool,
     ) -> Result<Value, PluginError>;
+
+    /// FIXME: document this dev command if will be merged
+    fn sync_dev_updateutxo(&self, _: &mut Plugin<T>, _: bool) -> Result<Value, PluginError> {
+        Err(error!("unsupported `dev_updateutxo`"))
+    }
 }

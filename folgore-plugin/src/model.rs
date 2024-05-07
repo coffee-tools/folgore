@@ -22,3 +22,8 @@ pub(crate) struct SendRawTx {
 pub(crate) struct GetChainInfo {
     pub(crate) last_height: Option<u64>,
 }
+
+#[derive(Deserialize, Serialize)]
+pub(crate) struct DevUpdateUTxos {
+    pub(crate) iamsure: bool,
+}
