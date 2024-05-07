@@ -4,7 +4,6 @@ use std::collections::BTreeMap;
 use crate::prelude::cln::json_utils;
 use crate::prelude::cln_plugin::error;
 use crate::prelude::cln_plugin::errors::PluginError;
-use crate::prelude::json::json;
 use crate::prelude::json::Value;
 
 /// Transaction fee rate in satoshis/vByte.
@@ -42,29 +41,22 @@ impl FeeEstimator {
 
     pub fn build_estimate_fees(fees: &BTreeMap<u64, FeeRate>) -> Result<Value, PluginError> {
         let mut resp = json_utils::init_payload();
-
-        json_utils::add_number(
-            &mut resp,
-            "feerate_floor",
-            *fees
-                .get(&0)
-                .ok_or(error!("impossible get the minimum feerate"))? as i64,
-        );
-        let mut feerates = vec![];
         for (height, rate) in fees.iter() {
-            feerates.push(json!({
-                "blocks": height,
-                "feerate": rate,
-            }))
+            json_utils::add_number(&mut resp, &format!("{height}"), *rate as i64);
         }
-        json_utils::add_vec(&mut resp, "feerates", feerates);
-        Ok(resp)
+        let floor = *fees
+            .get(&0)
+            .ok_or(error!("impossible get the minimum feerate"))? as i64;
+        Ok(serde_json::json!({
+            "feerate_floor": floor,
+            "feerates": resp,
+        }))
     }
 
     pub fn null_estimate_fees() -> Result<Value, PluginError> {
-        let mut resp = json_utils::init_payload();
-        json_utils::add_number(&mut resp, "feerate_floor", 1000);
-        json_utils::add_vec::<Value>(&mut resp, "feerates", vec![]);
-        Ok(resp)
+        Ok(serde_json::json!({
+            "feerate_floor": 1000,
+            "feerates": {},
+        }))
     }
 }
