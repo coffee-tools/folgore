@@ -1,11 +1,11 @@
 //! Plugin definition.
-use std::fmt;
+
 use std::str::FromStr;
 use std::sync::Arc;
 
 use clightningrpc_plugin_macros::plugin;
 use clightningrpc_plugin_macros::rpc_method;
-use serde::{de::DeserializeOwned, Serialize};
+
 use serde_json::{json, Value};
 
 use folgore_bitcoind::BitcoinCore;
@@ -15,7 +15,7 @@ use folgore_common::cln::plugin::error;
 use folgore_common::cln::plugin::errors::PluginError;
 use folgore_common::cln::plugin::plugin::Plugin;
 use folgore_common::cln::plugin::types::LogLevel;
-use folgore_common::cln::rpc::LightningRPC;
+
 use folgore_esplora::Esplora;
 use folgore_nakamoto::{Config, Nakamoto, Network};
 
@@ -33,6 +33,7 @@ pub struct PluginState {
     pub(crate) core_pass: Option<String>,
     pub(crate) _retry_strategy: Option<String>,
     /// CLN RPC path
+    #[allow(dead_code)]
     cln_rpc_path: Option<String>,
 }
 
