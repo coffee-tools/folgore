@@ -123,7 +123,8 @@ fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option
     for rate in from..to {
         let key = &format!("{rate}");
         if estimation.contains_key(key) {
-            return Some(estimation[key] as i64);
+            // Esplora return sat/vByte but core lightnign wants sat/kvB
+            return Some(estimation[key] as i64 * 1000);
         }
     }
     log::info!(
@@ -440,27 +441,25 @@ mod tests {
 
         #[derive(Deserialize, Debug)]
         struct FeeEstimation {
-            feerates: Vec<PerBlockFee>,
-        }
-
-        #[derive(Deserialize, Debug)]
-        struct PerBlockFee {
-            blocks: u64,
-            feerate: u64,
+            feerates: serde_json::Value,
         }
 
         let fee_estimation: FeeEstimation = serde_json::from_value(fee_estimation).unwrap();
-        assert!(!fee_estimation.feerates.is_empty(), "{:?}", fee_ranges);
-        assert_eq!(fee_estimation.feerates[0].blocks, 0);
-        assert_eq!(fee_estimation.feerates[1].blocks, 2);
-        assert_eq!(fee_estimation.feerates[2].blocks, 6);
-        assert_eq!(fee_estimation.feerates[3].blocks, 12);
-        assert_eq!(fee_estimation.feerates[4].blocks, 100);
+        assert!(fee_estimation.feerates.get("0").is_some());
+        assert!(fee_estimation.feerates.get("2").is_some());
+        assert!(fee_estimation.feerates.get("6").is_some());
+        assert!(fee_estimation.feerates.get("12").is_some());
+        assert!(fee_estimation.feerates.get("100").is_some());
 
-        assert_eq!(fee_estimation.feerates[0].feerate, 45);
-        assert_eq!(fee_estimation.feerates[1].feerate, 45);
-        assert_eq!(fee_estimation.feerates[2].feerate, 26);
-        assert_eq!(fee_estimation.feerates[3].feerate, 21);
-        assert_eq!(fee_estimation.feerates[4].feerate, 15);
+        assert_eq!(
+            fee_estimation.feerates.get("0").unwrap(),
+            15 * 1000,
+            "{:?}",
+            fee_estimation
+        );
+        assert_eq!(fee_estimation.feerates.get("2").unwrap(), 45 * 1000);
+        assert_eq!(fee_estimation.feerates.get("6").unwrap(), 26 * 1000);
+        assert_eq!(fee_estimation.feerates.get("12").unwrap(), 21 * 1000);
+        assert_eq!(fee_estimation.feerates.get("100").unwrap(), 15 * 1000);
     }
 }
