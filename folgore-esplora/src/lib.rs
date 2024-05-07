@@ -133,6 +133,31 @@ fn fee_in_range(estimation: &HashMap<String, f64>, from: u64, to: u64) -> Option
     None
 }
 
+fn estimate_fees_from_source(
+    fee_rates: &HashMap<String, f64>,
+) -> Result<serde_json::Value, PluginError> {
+    let mut fee_map = BTreeMap::new();
+    // FIXME: missing the mempool min fee, we should make a better soltution here
+    let fee =
+        fee_in_range(fee_rates, 0, 2).expect("mempool minimum fee range not able to calculate");
+    fee_map.insert(0, fee as u64);
+    for FeePriority(block, _) in FEE_RATES.iter().cloned() {
+        let diff = block as u64;
+        // Take a good range of blocks because esplora estimate bloks really bad
+        // but with this + 20% we should be enough good to get what we want
+        let range = (block as f64 * 0.50).round() as u64;
+        let Some(fee) = fee_in_range(fee_rates, block.into(), (block + range as u16).into()) else {
+            continue;
+        };
+        fee_map.insert(diff, fee as u64);
+    }
+    if fee_map.len() != FEE_RATES.len() + 1 {
+        return FeeEstimator::null_estimate_fees();
+    }
+    let resp = FeeEstimator::build_estimate_fees(&fee_map)?;
+    Ok(resp)
+}
+
 fn raw_to_num(buff: &[u8]) -> i64 {
     let buf = String::from_utf8(buff.to_vec()).expect("impossible convert the buff to a string");
     buf.parse().expect("impossible parse a string into a i64")
@@ -236,25 +261,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
                 .call::<HashMap<String, f64>>("/fee-estimates")
                 .map_err(from)
         })?;
-
-        let mut fee_map = BTreeMap::new();
-        // FIXME: missing the mempool min fee, we should make a better soltution here
-        let fee = fee_in_range(&fee_rates, 2, 20)
-            .expect("mempool minimum fee range not able to calculate");
-        fee_map.insert(0, fee as u64);
-        for FeePriority(block, _) in FEE_RATES.iter().cloned() {
-            let diff = block as u64;
-            // Take a good range of blocks because esplora estimate bloks really bad
-            // but with this + 100 we should be enough good to get what we want
-            let Some(fee) = fee_in_range(&fee_rates, block.into(), (block + 100).into()) else {
-                continue;
-            };
-            fee_map.insert(diff, fee as u64);
-        }
-        if fee_map.len() != FEE_RATES.len() + 1 {
-            return FeeEstimator::null_estimate_fees();
-        }
-        let resp = FeeEstimator::build_estimate_fees(&fee_map)?;
+        let resp = estimate_fees_from_source(&fee_rates)?;
         Ok(resp)
     }
 
@@ -330,7 +337,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
 
     fn sync_dev_updateutxo(
         &self,
-        plugin: &mut cln::plugin::plugin::Plugin<T>,
+        _plugin: &mut cln::plugin::plugin::Plugin<T>,
         iamsure: bool,
     ) -> Result<serde_json::Value, PluginError> {
         log::info!("calling `sync_dev_updateutxo`");
@@ -387,6 +394,73 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             )?;
             changed.push(outspend);
         }
-        Ok(serde_json::to_value(&changed).map_err(|err| error!("{err}"))?)
+        serde_json::to_value(&changed).map_err(|err| error!("{err}"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn test_estimatefees() {
+        let input = serde_json::json!({
+          "6": 26.942999999999998,
+          "21": 21.062,
+          "1008": 13.597,
+          "2": 45.978,
+          "13": 21.062,
+          "7": 23.124,
+          "4": 32.558,
+          "8": 23.124,
+          "3": 34.669,
+          "10": 21.062,
+          "16": 21.062,
+          "11": 21.062,
+          "17": 21.062,
+          "14": 21.062,
+          "1": 45.978,
+          "18": 21.062,
+          "5": 26.942999999999998,
+          "19": 21.062,
+          "20": 21.062,
+          "25": 17.128999999999998,
+          "24": 21.062,
+          "144": 15.948,
+          "504": 14.119,
+          "12": 21.062,
+          "9": 23.124,
+          "15": 21.062,
+          "23": 21.062,
+          "22": 21.062
+        });
+        let fee_ranges: HashMap<String, f64> = serde_json::from_value(input).unwrap();
+        let fee_estimation = super::estimate_fees_from_source(&fee_ranges).unwrap();
+
+        #[derive(Deserialize, Debug)]
+        struct FeeEstimation {
+            feerates: Vec<PerBlockFee>,
+        }
+
+        #[derive(Deserialize, Debug)]
+        struct PerBlockFee {
+            blocks: u64,
+            feerate: u64,
+        }
+
+        let fee_estimation: FeeEstimation = serde_json::from_value(fee_estimation).unwrap();
+        assert!(!fee_estimation.feerates.is_empty(), "{:?}", fee_ranges);
+        assert_eq!(fee_estimation.feerates[0].blocks, 0);
+        assert_eq!(fee_estimation.feerates[1].blocks, 2);
+        assert_eq!(fee_estimation.feerates[2].blocks, 6);
+        assert_eq!(fee_estimation.feerates[3].blocks, 12);
+        assert_eq!(fee_estimation.feerates[4].blocks, 100);
+
+        assert_eq!(fee_estimation.feerates[0].feerate, 45);
+        assert_eq!(fee_estimation.feerates[1].feerate, 45);
+        assert_eq!(fee_estimation.feerates[2].feerate, 26);
+        assert_eq!(fee_estimation.feerates[3].feerate, 21);
+        assert_eq!(fee_estimation.feerates[4].feerate, 15);
     }
 }
