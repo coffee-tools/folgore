@@ -140,7 +140,7 @@ fn estimate_fees_from_source(
     let mut fee_map = BTreeMap::new();
     // FIXME: missing the mempool min fee, we should make a better soltution here
     let fee =
-        fee_in_range(fee_rates, 0, 2).expect("mempool minimum fee range not able to calculate");
+        fee_in_range(fee_rates, 100, 150).expect("mempool minimum fee range not able to calculate");
     fee_map.insert(0, fee as u64);
     for FeePriority(block, _) in FEE_RATES.iter().cloned() {
         let diff = block as u64;
