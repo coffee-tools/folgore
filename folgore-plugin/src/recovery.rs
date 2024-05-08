@@ -36,7 +36,7 @@ impl TimeoutRetry {
         Self {
             timeout: RefCell::new(duration.unwrap_or(Duration::from_secs(60))),
             retry_state: RefCell::new(0),
-            times: 4,
+            times: 6,
         }
     }
 }
@@ -56,7 +56,7 @@ impl RecoveryStrategy for TimeoutRetry {
         while result.is_err() {
             log::info!(
                 "running into retry logic due a request failing. Time `{}` waiting `{}` secs",
-                self.times,
+                self.retry_state.borrow(),
                 self.timeout.borrow().as_secs()
             );
             if self.retry_state.borrow().eq(&self.times) {
