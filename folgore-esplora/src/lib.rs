@@ -441,25 +441,25 @@ mod tests {
 
         #[derive(Deserialize, Debug)]
         struct FeeEstimation {
-            feerates: serde_json::Value,
+            feerates: Vec<PerBlockFee>,
+        }
+
+        #[derive(Deserialize, Debug)]
+        struct PerBlockFee {
+            blocks: u64,
+            feerate: u64,
         }
 
         let fee_estimation: FeeEstimation = serde_json::from_value(fee_estimation).unwrap();
-        assert!(fee_estimation.feerates.get("0").is_some());
-        assert!(fee_estimation.feerates.get("2").is_some());
-        assert!(fee_estimation.feerates.get("6").is_some());
-        assert!(fee_estimation.feerates.get("12").is_some());
-        assert!(fee_estimation.feerates.get("100").is_some());
+        assert!(!fee_estimation.feerates.is_empty(), "{:?}", fee_ranges);
+        assert_eq!(fee_estimation.feerates[0].blocks, 2);
+        assert_eq!(fee_estimation.feerates[1].blocks, 6);
+        assert_eq!(fee_estimation.feerates[2].blocks, 12);
+        assert_eq!(fee_estimation.feerates[3].blocks, 100);
 
-        assert_eq!(
-            fee_estimation.feerates.get("0").unwrap(),
-            15 * 1000,
-            "{:?}",
-            fee_estimation
-        );
-        assert_eq!(fee_estimation.feerates.get("2").unwrap(), 45 * 1000);
-        assert_eq!(fee_estimation.feerates.get("6").unwrap(), 26 * 1000);
-        assert_eq!(fee_estimation.feerates.get("12").unwrap(), 21 * 1000);
-        assert_eq!(fee_estimation.feerates.get("100").unwrap(), 15 * 1000);
+        assert_eq!(fee_estimation.feerates[0].feerate, 45 * 1000);
+        assert_eq!(fee_estimation.feerates[1].feerate, 26 * 1000);
+        assert_eq!(fee_estimation.feerates[2].feerate, 21 * 1000);
+        assert_eq!(fee_estimation.feerates[3].feerate, 15 * 1000);
     }
 }

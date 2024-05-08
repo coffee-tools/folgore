@@ -1,7 +1,6 @@
 //! Generic Fee estimator for all the folgore backend.
 use std::collections::BTreeMap;
 
-use crate::prelude::cln::json_utils;
 use crate::prelude::cln_plugin::error;
 use crate::prelude::cln_plugin::errors::PluginError;
 use crate::prelude::json::Value;
@@ -40,9 +39,15 @@ impl FeeEstimator {
     }
 
     pub fn build_estimate_fees(fees: &BTreeMap<u64, FeeRate>) -> Result<Value, PluginError> {
-        let mut resp = json_utils::init_payload();
+        let mut resp = vec![];
         for (height, rate) in fees.iter() {
-            json_utils::add_number(&mut resp, &format!("{height}"), *rate as i64);
+            if *height == 0 {
+                continue;
+            }
+            resp.push(serde_json::json!({
+                "blocks": height,
+                "feerate": rate,
+            }))
         }
         let floor = *fees
             .get(&0)
