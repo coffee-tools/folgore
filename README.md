@@ -60,6 +60,20 @@ make a customization, these are some configuration options:
 - `bitcoin-rpcpassword`: Bitcoin core RPC password for authentication.
 - `bitcoin-fallback-client`: Bitcoin fallback client, in the case one of the client fails, the plugin use another backend for the request.
 
+## How to run
+
+Once plugin is successfully installed, you can simply run "lightningd" and plugin will start. However, you're supposed to run "lightningd" with "--disable-plugin bcli" option.
+
+```
+lightningd --network=<network-name> --disable-plugin bcli
+```
+
+for eg.
+
+```
+lightningd --network=testnet --disable-plugin bcli
+```
+
 ## BIP 157 support
 
 This plugin allow the support of the BIP 157 [Client Side Block Filtering](https://github.com/bitcoin/bips/blob/master/bip-0157.mediawiki) in core lightning
