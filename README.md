@@ -41,7 +41,7 @@ To install it you need just to [install coffee](https://coffee-docs.netlify.app/
 run the following commands
 
 ```bash
->> coffee --network <your network> add remote folgore-git https://github.com/coffee-tools/folgore.git
+>> coffee --network <your network> remote add folgore-git https://github.com/coffee-tools/folgore.git
 >> coffee --network <your network> install folgore
 ```
 
