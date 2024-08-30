@@ -35,7 +35,7 @@ cp ./target/debug/folgore_plugin /home/<user>/.lightning/plugins
 ### With a plugin manager
 
 This plugin will support [coffee](https://coffee-docs.netlify.app/introduction.html) as plugin manager, and it is also the 
-raccomended way to install a this plugin in core lightning.
+reccomended way to install a this plugin in core lightning.
 
 To install it you need just to [install coffee](https://coffee-docs.netlify.app/install-coffee.html) and then
 run the following commands
