@@ -159,9 +159,14 @@ fn estimate_fees_from_source(
     Ok(resp)
 }
 
-fn raw_to_num(buff: &[u8]) -> i64 {
-    let buf = String::from_utf8(buff.to_vec()).expect("impossible convert the buff to a string");
-    buf.parse().expect("impossible parse a string into a i64")
+fn raw_to_num(buff: &[u8]) -> Result<i64, PluginError> {
+    let buf = String::from_utf8(buff.to_vec())
+        .map_err(|err| error!("raw_to_num: invalid utf-8 ({err}); bytes={buff:?}"))?;
+    let trimmed = buf.trim();
+    log::debug!("raw_to_num input: {:?} (len={})", trimmed, trimmed.len());
+    trimmed
+        .parse::<i64>()
+        .map_err(|err| error!("raw_to_num: parse failed ({err}); body={buf:?}"))
 }
 
 impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
@@ -185,7 +190,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
                 self.client
                     .raw_call("/blocks/tip/height")
                     .map_err(|err| error!("{err}"))
-                    .map(|raw| raw_to_num(&raw))
+                    .and_then(|raw| raw_to_num(&raw))
             })
             .map_err(|err| error!("{err}"))?;
         if height > current_height as u64 {
@@ -223,7 +228,7 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
                 self.client
                     .raw_call("/blocks/tip/height")
                     .map_err(|err| error!("{err}"))
-                    .map(|raw| raw_to_num(&raw))
+                    .and_then(|raw| raw_to_num(&raw))
             })
             .map_err(|err| error!("{err}"))?;
 
