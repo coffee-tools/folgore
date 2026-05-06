@@ -184,37 +184,55 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
             "block": null,
         });
 
-        let current_height = self
-            .recovery_strategy
-            .apply(|| {
+        // Bubbling an Err up to lightningd aborts the daemon
+        // (bitcoind.c:bitcoin_plugin_error). Per the contract on
+        // FolgoreBackend::sync_block_by_height, "no block found" must be
+        // reported as nulls — extend that to post-retry transient backend
+        // failures (504 / 429 / connection reset) so CLN retries instead.
+        let result: Result<serde_json::Value, PluginError> = (|| {
+            let current_height = self
+                .recovery_strategy
+                .apply(|| {
+                    self.client
+                        .raw_call("/blocks/tip/height")
+                        .map_err(|err| error!("{err}"))
+                        .and_then(|raw| raw_to_num(&raw))
+                })
+                .map_err(|err| error!("{err}"))?;
+            if height > current_height as u64 {
+                return Ok(json!({"blockhash": null, "block": null}));
+            }
+            // Now that we are sure that the block exist we can requesting it
+            let block_hash = self.recovery_strategy.apply(|| {
                 self.client
-                    .raw_call("/blocks/tip/height")
+                    .raw_call(&format!("/block-height/{height}"))
                     .map_err(|err| error!("{err}"))
-                    .and_then(|raw| raw_to_num(&raw))
-            })
-            .map_err(|err| error!("{err}"))?;
-        if height > current_height as u64 {
-            return Ok(fail_resp);
+                    .and_then(|raw| String::from_utf8(raw).map_err(|err| error!("{err}")))
+            })?;
+
+            let block = self.recovery_strategy.apply(|| {
+                self.client
+                    .raw_call(&format!("/block/{block_hash}/raw"))
+                    .map_err(from)
+            })?;
+
+            let mut response = json_utils::init_payload();
+            json_utils::add_str(&mut response, "blockhash", &block_hash);
+            let bytes = ByteBuf(&block);
+            json_utils::add_str(&mut response, "block", &format!("{:02x}", bytes));
+            Ok(response)
+        })();
+
+        match result {
+            Ok(resp) => Ok(resp),
+            Err(err) => {
+                log::warn!(
+                    "sync_block_by_height({height}) backend failure after retries; \
+                     replying with nulls so lightningd retries instead of aborting: {err}"
+                );
+                Ok(fail_resp)
+            }
         }
-        // Now that we are sure that the block exist we can requesting it
-        let block_hash = self.recovery_strategy.apply(|| {
-            self.client
-                .raw_call(&format!("/block-height/{height}"))
-                .map_err(|err| error!("{err}"))
-                .and_then(|raw| String::from_utf8(raw).map_err(|err| error!("{err}")))
-        })?;
-
-        let block = self.recovery_strategy.apply(|| {
-            self.client
-                .raw_call(&format!("/block/{block_hash}/raw"))
-                .map_err(from)
-        })?;
-
-        let mut response = json_utils::init_payload();
-        json_utils::add_str(&mut response, "blockhash", &block_hash);
-        let bytes = ByteBuf(&block);
-        json_utils::add_str(&mut response, "block", &format!("{:02x}", bytes));
-        Ok(response)
     }
 
     fn sync_chain_info(
@@ -262,13 +280,31 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         &self,
         _: &mut cln::plugin::plugin::Plugin<T>,
     ) -> Result<serde_json::Value, PluginError> {
-        let fee_rates = self.recovery_strategy.apply(|| {
-            self.client
-                .call::<HashMap<String, f64>>("/fee-estimates")
-                .map_err(from)
-        })?;
-        let resp = estimate_fees_from_source(&fee_rates)?;
-        Ok(resp)
+        // Contract: "if fee estimation fails, the plugin must set all the
+        // fields to null" (FolgoreBackend::sync_estimate_fees). Returning
+        // an Err here makes lightningd abort on `estimatefees`.
+        let result: Result<serde_json::Value, PluginError> = (|| {
+            let fee_rates = self.recovery_strategy.apply(|| {
+                self.client
+                    .call::<HashMap<String, f64>>("/fee-estimates")
+                    .map_err(from)
+            })?;
+            estimate_fees_from_source(&fee_rates)
+        })();
+
+        match result {
+            Ok(resp) => Ok(resp),
+            Err(err) => {
+                log::warn!(
+                    "sync_estimate_fees backend failure after retries; \
+                     replying with all-null fields per contract: {err}"
+                );
+                // Use the shared null payload so `feerate_floor` is present;
+                // a hand-rolled legacy literal here triggers
+                // bitcoind.c:bitcoin_plugin_error -> fatal() in lightningd.
+                FeeEstimator::null_estimate_fees()
+            }
+        }
     }
 
     fn sync_get_utxo(
