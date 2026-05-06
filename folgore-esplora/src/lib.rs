@@ -299,16 +299,10 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
                     "sync_estimate_fees backend failure after retries; \
                      replying with all-null fields per contract: {err}"
                 );
-                Ok(json!({
-                    "opening": null,
-                    "mutual_close": null,
-                    "unilateral_close": null,
-                    "delayed_to_us": null,
-                    "htlc_resolution": null,
-                    "penalty": null,
-                    "min_acceptable": null,
-                    "max_acceptable": null,
-                }))
+                // Use the shared null payload so `feerate_floor` is present;
+                // a hand-rolled legacy literal here triggers
+                // bitcoind.c:bitcoin_plugin_error -> fatal() in lightningd.
+                FeeEstimator::null_estimate_fees()
             }
         }
     }
