@@ -103,10 +103,65 @@ fn dispatch(
         "estimatesmartfee" => backend.chain_fee(arg_u64(args, 0).unwrap_or(6)),
         "getmempoolinfo" => backend.chain_mempool(),
         "sendrawtransaction" => backend.chain_broadcast(arg_str(args, 0)),
+        // ldk-node's transaction sync. These do not need cumulative chainwork.
+        "esplora_tip" => esplora_tip(backend),
+        "esplora_header" => esplora_header_by_hash(backend, arg_str(args, 0)),
+        "esplora_tx_status" => esplora_tx_status(backend, arg_str(args, 0)),
+        "esplora_merkle" => esplora_merkle(backend, arg_str(args, 0)),
+        "esplora_output" => {
+            esplora_output(backend, arg_str(args, 0), arg_u64(args, 1).unwrap_or(0))
+        }
+        "esplora_tx" => esplora_tx(backend, arg_str(args, 0)),
         other => Err(folgore_common::cln::plugin::error!(
             "method not found: {other}"
         )),
     }
+}
+
+fn esplora_tip(backend: &impl FolgoreBackend<()>) -> folgore_common::Result<serde_json::Value> {
+    match backend.kind() {
+        folgore_common::client::BackendKind::Esplora => backend.chain_tip(),
+        folgore_common::client::BackendKind::Electrum => backend.chain_tip(),
+        _ => Err(folgore_common::cln::plugin::error!(
+            "this backend has no transaction-sync tip"
+        )),
+    }
+}
+
+fn esplora_header_by_hash(
+    backend: &impl FolgoreBackend<()>,
+    hash: &str,
+) -> folgore_common::Result<serde_json::Value> {
+    backend.chain_header(hash)
+}
+
+fn esplora_tx_status(
+    backend: &impl FolgoreBackend<()>,
+    txid: &str,
+) -> folgore_common::Result<serde_json::Value> {
+    backend.chain_tx_status(txid)
+}
+
+fn esplora_merkle(
+    backend: &impl FolgoreBackend<()>,
+    txid: &str,
+) -> folgore_common::Result<serde_json::Value> {
+    backend.chain_tx_merkle(txid)
+}
+
+fn esplora_tx(
+    backend: &impl FolgoreBackend<()>,
+    txid: &str,
+) -> folgore_common::Result<serde_json::Value> {
+    backend.chain_tx(txid)
+}
+
+fn esplora_output(
+    backend: &impl FolgoreBackend<()>,
+    txid: &str,
+    vout: u64,
+) -> folgore_common::Result<serde_json::Value> {
+    backend.chain_output_status(txid, vout)
 }
 
 fn arg_str(args: &[serde_json::Value], index: usize) -> &str {
