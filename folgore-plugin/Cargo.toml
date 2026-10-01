@@ -9,6 +9,7 @@ folgore-common = { path = "../folgore-common" }
 folgore-nakamoto = { path = "../folgore-nakamoto" }
 folgore-esplora = { path = "../folgore-esplora" }
 folgore-bitcoind = { path = "../folgore-bitcoind" }
+folgore-electrum = { path = "../folgore-electrum" }
 serde = "1.0.159"
 serde_json = "1.0.95"
 

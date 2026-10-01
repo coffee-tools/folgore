@@ -50,10 +50,13 @@ run the following commands
 The plugin is developed to work out of the box without any extra configuration, but if you want 
 make a customization, these are some configuration options:
 
-- `bitcoin-client`: The client name that the plugin need to use, by default `esplora` but the following clients are supported:
-   - `nakamoto`: Bitcoin node implementation with the BIP 157 support;
-   - `esplora`: Rest API to support esplora like backend,
-   - `bitcoind`: Bitcoin Core implementation
+- `bitcoin-client`: The client name. Default is `electrum`, the same choice phoenixd makes. Supported clients:
+   - `electrum`: Electrum protocol. `--electrum-server host:port` overrides the public server.
+   - `esplora`: REST API. Selected automatically when `--mempool-space-url` is set.
+   - `nakamoto`: Bitcoin node implementation with BIP 157 support.
+   - `bitcoind`: Bitcoin Core.
+- `mempool-space-url`: Custom mempool.space instance. When set, folgore uses that esplora API instead of electrum (phoenixd).
+- `electrum-server`: Custom electrum server, `host:port`.
 - `bitcoin-esplora-url`: The URL of the esplora server, by default using the Blockstream API
 - `bitcoin-rpcurl`: The URL of bitcoin core (for now it support http only and not https)
 - `bitcoin-rpcuser`: Bitcoin core RPC user inside for authentication;
@@ -126,3 +129,15 @@ An than lets wait a while that nakamoto will sync with the network.
  You should have received a copy of the GNU General Public License along
  with this program; if not, write to the Free Software Foundation, Inc.,
  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+## Running under lampo
+
+Folgore's CLN plugin speaks stdin JSON-RPC. Lampo will not spawn that binary.
+`folgore-lampo` is the lampo plugin: it binds `--lampo-listen` and lampo dials it.
+
+```sh
+lampod-cli --plugin ./target/release/folgore-lampo
+lampod-cli --plugin ./target/release/folgore-lampo -- --mempool-space-url https://mempool.space/signet/api
+```
+
+Without `--mempool-space-url` the plugin uses electrum. With it, the same chain methods are answered by that esplora API.
