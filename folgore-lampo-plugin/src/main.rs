@@ -104,6 +104,42 @@ async fn main() {
             "hex",
             rpc(chain.clone(), "sendrawtransaction"),
         )
+        .rpc_method(
+            "esplora_tip",
+            "Tip hash and height for transaction sync",
+            "",
+            rpc(chain.clone(), "esplora_tip"),
+        )
+        .rpc_method(
+            "esplora_header",
+            "Header by hash, without cumulative chainwork",
+            "hash",
+            rpc(chain.clone(), "esplora_header"),
+        )
+        .rpc_method(
+            "esplora_tx",
+            "Raw transaction hex",
+            "txid",
+            rpc(chain.clone(), "esplora_tx"),
+        )
+        .rpc_method(
+            "esplora_tx_status",
+            "Whether a txid is confirmed",
+            "txid",
+            rpc(chain.clone(), "esplora_tx_status"),
+        )
+        .rpc_method(
+            "esplora_merkle",
+            "Merkle proof for a confirmed tx",
+            "txid",
+            rpc(chain.clone(), "esplora_merkle"),
+        )
+        .rpc_method(
+            "esplora_output",
+            "Whether an output is spent",
+            "txid vout",
+            rpc(chain.clone(), "esplora_output"),
+        )
         .on_init(move |params| {
             let backend = backend.clone();
             async move {

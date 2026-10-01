@@ -451,6 +451,46 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         Ok(serde_json::json!({"mempoolminfee": 0.00001, "size": 0, "loaded": true}))
     }
 
+    fn chain_tx(&self, txid: &str) -> Result<serde_json::Value, PluginError> {
+        let body = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_call(&format!("/tx/{txid}/hex"))
+                .map_err(|err| error!("{err}"))
+        })?;
+        let text = String::from_utf8(body).map_err(|err| error!("{err}"))?;
+        Ok(serde_json::json!(text.trim()))
+    }
+
+    fn chain_tx_status(&self, txid: &str) -> Result<serde_json::Value, PluginError> {
+        let body = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_call(&format!("/tx/{txid}/status"))
+                .map_err(|err| error!("{err}"))
+        })?;
+        serde_json::from_slice(&body).map_err(|err| error!("tx status: {err}"))
+    }
+
+    fn chain_tx_merkle(&self, txid: &str) -> Result<serde_json::Value, PluginError> {
+        let body = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_call(&format!("/tx/{txid}/merkleblock-proof"))
+                .map_err(|err| error!("{err}"))
+        })?;
+        if body.is_empty() {
+            return Ok(serde_json::json!(null));
+        }
+        Ok(serde_json::json!(encode_hex(&body)))
+    }
+
+    fn chain_output_status(&self, txid: &str, vout: u64) -> Result<serde_json::Value, PluginError> {
+        let body = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_call(&format!("/tx/{txid}/outspend/{vout}"))
+                .map_err(|err| error!("{err}"))
+        })?;
+        serde_json::from_slice(&body).map_err(|err| error!("outspend: {err}"))
+    }
+
     fn chain_broadcast(&self, tx: &str) -> Result<serde_json::Value, PluginError> {
         let sent = self.recovery_strategy.apply(|| {
             self.client

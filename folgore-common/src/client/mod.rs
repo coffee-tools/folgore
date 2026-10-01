@@ -132,4 +132,31 @@ pub trait FolgoreBackend<T: Clone> {
             "chain_broadcast is not implemented for this backend"
         ))
     }
+
+    /// Confirmation of one txid. Used by the transaction sync, not the
+    /// header poller. `confirmed` is false when the tx is unknown or
+    /// still in the mempool.
+    fn chain_tx(&self, _txid: &str) -> Result<Value, PluginError> {
+        Err(error!("chain_tx is not implemented for this backend"))
+    }
+
+    fn chain_tx_status(&self, _txid: &str) -> Result<Value, PluginError> {
+        Err(error!(
+            "chain_tx_status is not implemented for this backend"
+        ))
+    }
+
+    /// Merkle block for a confirmed tx, hex. Absent when unconfirmed.
+    fn chain_tx_merkle(&self, _txid: &str) -> Result<Value, PluginError> {
+        Err(error!(
+            "chain_tx_merkle is not implemented for this backend"
+        ))
+    }
+
+    /// Whether an output is spent, and by which txid.
+    fn chain_output_status(&self, _txid: &str, _vout: u64) -> Result<Value, PluginError> {
+        Err(error!(
+            "chain_output_status is not implemented for this backend"
+        ))
+    }
 }

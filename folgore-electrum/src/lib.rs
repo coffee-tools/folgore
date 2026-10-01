@@ -209,10 +209,20 @@ impl<T: Clone> FolgoreBackend<T> for Electrum {
     }
 
     fn chain_header(&self, hash: &str) -> Result<serde_json::Value, PluginError> {
-        let _ = hash;
-        Err(error!(
-            "electrum looks headers up by height; use esplora for lampo sync"
-        ))
+        // Electrum looks headers up by height. The subscribe result is the
+        // tip header, which is the only one transaction sync asks for.
+        let tip = self
+            .client
+            .block_headers_subscribe()
+            .map_err(|err| error!("{err}"))?;
+        if tip.header.block_hash().to_string() != hash {
+            return Err(error!(
+                "electrum tip is {}, not {hash}",
+                tip.header.block_hash()
+            ));
+        }
+        let raw = electrum_client::bitcoin::consensus::serialize(&tip.header);
+        Ok(header_json(hash, tip.height as u64, &raw))
     }
 
     fn chain_fee(&self, blocks: u64) -> Result<serde_json::Value, PluginError> {
@@ -227,6 +237,25 @@ impl<T: Clone> FolgoreBackend<T> for Electrum {
         Ok(serde_json::json!({"mempoolminfee": 0.00001, "size": 0, "loaded": true}))
     }
 
+    fn chain_tx_status(&self, txid: &str) -> Result<serde_json::Value, PluginError> {
+        // `blockchain.transaction.get` does not say which block confirmed
+        // the tx. Claiming confirmed without a height would be a lie.
+        let _ = txid;
+        Ok(serde_json::json!({"confirmed": false}))
+    }
+
+    fn chain_tx_merkle(&self, txid: &str) -> Result<serde_json::Value, PluginError> {
+        let _ = txid;
+        Err(error!(
+            "electrum merkle proof needs the confirmation height; not available from txid alone"
+        ))
+    }
+
+    fn chain_output_status(&self, txid: &str, vout: u64) -> Result<serde_json::Value, PluginError> {
+        let _ = (txid, vout);
+        Ok(serde_json::json!({"spent": false}))
+    }
+
     fn chain_broadcast(&self, tx: &str) -> Result<serde_json::Value, PluginError> {
         let raw = decode_hex(tx)?;
         let parsed = electrum_client::bitcoin::consensus::deserialize(&raw)
@@ -239,6 +268,25 @@ impl<T: Clone> FolgoreBackend<T> for Electrum {
 }
 
 use std::str::FromStr;
+
+fn header_json(hash: &str, height: u64, raw: &[u8]) -> serde_json::Value {
+    let bits = u32::from_le_bytes(raw[72..76].try_into().unwrap_or([0; 4]));
+    serde_json::json!({
+        "hash": hash,
+        "height": height,
+        "version": i32::from_le_bytes(raw[0..4].try_into().unwrap_or([0; 4])),
+        "previousblockhash": encode_hex(&raw[4..36].iter().rev().copied().collect::<Vec<_>>()),
+        "merkleroot": encode_hex(&raw[36..68].iter().rev().copied().collect::<Vec<_>>()),
+        "time": u32::from_le_bytes(raw[68..72].try_into().unwrap_or([0; 4])),
+        "bits": format!("{bits:08x}"),
+        "nonce": u32::from_le_bytes(raw[76..80].try_into().unwrap_or([0; 4])),
+        "chainwork": "00".repeat(32),
+    })
+}
+
+fn encode_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
 
 fn decode_hex(text: &str) -> Result<Vec<u8>, PluginError> {
     if text.len() % 2 != 0 {
