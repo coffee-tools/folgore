@@ -194,6 +194,48 @@ impl<T: Clone> FolgoreBackend<T> for Electrum {
         Ok(resp)
     }
 
+    fn chain_tip(&self) -> Result<serde_json::Value, PluginError> {
+        let tip = self
+            .client
+            .block_headers_subscribe()
+            .map_err(|err| error!("{err}"))?;
+        Ok(serde_json::json!({
+            "chain": "main",
+            "blocks": tip.height,
+            "headers": tip.height,
+            "bestblockhash": tip.header.block_hash().to_string(),
+            "initialblockdownload": false,
+        }))
+    }
+
+    fn chain_header(&self, hash: &str) -> Result<serde_json::Value, PluginError> {
+        let _ = hash;
+        Err(error!(
+            "electrum looks headers up by height; use esplora for lampo sync"
+        ))
+    }
+
+    fn chain_fee(&self, blocks: u64) -> Result<serde_json::Value, PluginError> {
+        let rate = self
+            .client
+            .estimate_fee(blocks as usize)
+            .map_err(|err| error!("{err}"))?;
+        Ok(serde_json::json!({"feerate": rate, "blocks": blocks}))
+    }
+
+    fn chain_mempool(&self) -> Result<serde_json::Value, PluginError> {
+        Ok(serde_json::json!({"mempoolminfee": 0.00001, "size": 0, "loaded": true}))
+    }
+
+    fn chain_broadcast(&self, tx: &str) -> Result<serde_json::Value, PluginError> {
+        let raw = decode_hex(tx)?;
+        let parsed = electrum_client::bitcoin::consensus::deserialize(&raw)
+            .map_err(|err| error!("{err}"))?;
+        match self.client.transaction_broadcast(&parsed) {
+            Ok(txid) => Ok(serde_json::json!(txid.to_string())),
+            Err(err) => Err(error!("{err}")),
+        }
+    }
 }
 
 use std::str::FromStr;

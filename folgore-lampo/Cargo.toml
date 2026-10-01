@@ -1,0 +1,9 @@
+[package]
+name = "folgore-lampo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+folgore-common = { path = "../folgore-common" }
+serde_json = "1"
+log = "0.4"

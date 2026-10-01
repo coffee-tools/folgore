@@ -187,4 +187,37 @@ impl<T: Clone> FolgoreBackend<T> for BitcoinCore {
             "errmsg": result.err().map(|err| err.to_string()),
         }))
     }
+
+    fn chain_tip(&self) -> Result<json::Value, errors::PluginError> {
+        self.rpc("getblockchaininfo", json!([]))
+    }
+
+    fn chain_header(&self, hash: &str) -> Result<json::Value, errors::PluginError> {
+        self.rpc("getblockheader", json!([hash]))
+    }
+
+    fn chain_block(&self, hash: &str, verbosity: u64) -> Result<json::Value, errors::PluginError> {
+        self.rpc("getblock", json!([hash, verbosity]))
+    }
+
+    fn chain_fee(&self, blocks: u64) -> Result<json::Value, errors::PluginError> {
+        self.rpc("estimatesmartfee", json!([blocks]))
+    }
+
+    fn chain_mempool(&self) -> Result<json::Value, errors::PluginError> {
+        self.rpc("getmempoolinfo", json!([]))
+    }
+
+    fn chain_broadcast(&self, tx: &str) -> Result<json::Value, errors::PluginError> {
+        self.rpc("sendrawtransaction", json!([tx]))
+    }
+}
+
+impl BitcoinCore {
+    fn rpc(&self, method: &str, params: json::Value) -> Result<json::Value, errors::PluginError> {
+        let params = params.as_array().cloned().unwrap_or_default();
+        self.client
+            .call(method, &params)
+            .map_err(|err| error!("bitcoind `{method}`: {err}"))
+    }
 }

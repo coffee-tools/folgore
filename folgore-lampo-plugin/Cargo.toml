@@ -1,0 +1,20 @@
+[package]
+name = "folgore-lampo-plugin"
+version = "0.1.0"
+edition = "2021"
+description = "Folgore as a lampo gRPC plugin: electrum, or mempool.space"
+
+[[bin]]
+name = "folgore-lampo"
+path = "src/main.rs"
+
+[dependencies]
+folgore-common = { path = "../folgore-common" }
+folgore-electrum = { path = "../folgore-electrum" }
+folgore-esplora = { path = "../folgore-esplora" }
+folgore-bitcoind = { path = "../folgore-bitcoind" }
+lampo-plugin-sdk = { git = "https://github.com/vincenzopalazzo/lampo.rs.git", branch = "claude/loving-elion" }
+serde_json = "1"
+log = "0.4"
+env_logger = "0.11"
+tokio = { version = "1", features = ["rt", "sync", "macros"] }

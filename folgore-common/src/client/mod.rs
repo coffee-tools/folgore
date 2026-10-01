@@ -12,6 +12,7 @@ pub enum BackendKind {
     Nakamoto,
     Esplora,
     BitcoinCore,
+    Electrum,
 }
 
 impl TryFrom<&str> for BackendKind {
@@ -22,6 +23,7 @@ impl TryFrom<&str> for BackendKind {
             "nakamoto" => Ok(Self::Nakamoto),
             "esplora" => Ok(Self::Esplora),
             "bitcoind" => Ok(Self::BitcoinCore),
+            "electrum" => Ok(Self::Electrum),
             _ => Err(error!("client {value} not supported")),
         }
     }
@@ -33,6 +35,7 @@ impl fmt::Display for BackendKind {
             Self::Nakamoto => write!(f, "nakamoto"),
             Self::Esplora => write!(f, "esplora"),
             Self::BitcoinCore => write!(f, "bitcoind"),
+            Self::Electrum => write!(f, "electrum"),
         }
     }
 }
@@ -100,5 +103,33 @@ pub trait FolgoreBackend<T: Clone> {
     /// FIXME: document this dev command if will be merged
     fn sync_dev_updateutxo(&self, _: &mut Plugin<T>, _: bool) -> Result<Value, PluginError> {
         Err(error!("unsupported `dev_updateutxo`"))
+    }
+
+    /// Lampo chain methods. Default is unsupported so a CLN-only backend
+    /// still compiles. A backend that lampo spawns overrides these.
+    fn chain_tip(&self) -> Result<Value, PluginError> {
+        Err(error!("chain_tip is not implemented for this backend"))
+    }
+
+    fn chain_header(&self, _hash: &str) -> Result<Value, PluginError> {
+        Err(error!("chain_header is not implemented for this backend"))
+    }
+
+    fn chain_block(&self, _hash: &str, _verbosity: u64) -> Result<Value, PluginError> {
+        Err(error!("chain_block is not implemented for this backend"))
+    }
+
+    fn chain_fee(&self, _blocks: u64) -> Result<Value, PluginError> {
+        Err(error!("chain_fee is not implemented for this backend"))
+    }
+
+    fn chain_mempool(&self) -> Result<Value, PluginError> {
+        Err(error!("chain_mempool is not implemented for this backend"))
+    }
+
+    fn chain_broadcast(&self, _tx: &str) -> Result<Value, PluginError> {
+        Err(error!(
+            "chain_broadcast is not implemented for this backend"
+        ))
     }
 }
