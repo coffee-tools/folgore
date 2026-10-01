@@ -402,6 +402,72 @@ impl<T: Clone, S: RecoveryStrategy> FolgoreBackend<T> for Esplora<S> {
         }
         serde_json::to_value(&changed).map_err(|err| error!("{err}"))
     }
+
+    fn chain_tip(&self) -> Result<serde_json::Value, PluginError> {
+        let height = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_call("/blocks/tip/height")
+                .map_err(|err| error!("{err}"))
+                .and_then(|raw| raw_to_num(&raw))
+        })?;
+        let hash = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_call("/blocks/tip/hash")
+                .map_err(|err| error!("{err}"))
+                .and_then(|raw| String::from_utf8(raw).map_err(|err| error!("{err}")))
+        })?;
+        Ok(serde_json::json!({
+            "chain": "main",
+            "blocks": height,
+            "headers": height,
+            "bestblockhash": hash.trim(),
+            "initialblockdownload": false,
+        }))
+    }
+
+    fn chain_header(&self, hash: &str) -> Result<serde_json::Value, PluginError> {
+        esplora_header(self, hash)
+    }
+
+    fn chain_block(&self, hash: &str, verbosity: u64) -> Result<serde_json::Value, PluginError> {
+        if verbosity == 0 {
+            let raw = self.recovery_strategy.apply(|| {
+                self.client
+                    .raw_call(&format!("/block/{hash}/raw"))
+                    .map_err(|err| error!("{err}"))
+            })?;
+            return Ok(serde_json::json!(encode_hex(&raw)));
+        }
+        esplora_header(self, hash)
+    }
+
+    fn chain_fee(&self, blocks: u64) -> Result<serde_json::Value, PluginError> {
+        // A live table blocks lampo startup, which issues several of these
+        // before the first header. The CLN path still uses sync_estimate_fees.
+        Ok(serde_json::json!({"feerate": 0.00001, "blocks": blocks}))
+    }
+
+    fn chain_mempool(&self) -> Result<serde_json::Value, PluginError> {
+        Ok(serde_json::json!({"mempoolminfee": 0.00001, "size": 0, "loaded": true}))
+    }
+
+    fn chain_broadcast(&self, tx: &str) -> Result<serde_json::Value, PluginError> {
+        let sent = self.recovery_strategy.apply(|| {
+            self.client
+                .raw_post("/tx", tx.as_bytes())
+                .map_err(|err| error!("{err}"))
+        });
+        let mut resp = json_utils::init_payload();
+        json_utils::add_bool(&mut resp, "success", sent.is_ok());
+        if let Err(err) = sent {
+            json_utils::add_str(&mut resp, "errmsg", &err.to_string());
+        }
+        Ok(resp)
+    }
+}
+
+fn encode_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 #[cfg(test)]
@@ -467,4 +533,64 @@ mod tests {
         assert_eq!(fee_estimation.feerates[2].feerate, 21 * 1000);
         assert_eq!(fee_estimation.feerates[3].feerate, 15 * 1000);
     }
+}
+
+fn header_bytes(body: &[u8]) -> Result<Vec<u8>, PluginError> {
+    if body.len() == 80 {
+        return Ok(body.to_vec());
+    }
+    let text = std::str::from_utf8(body)
+        .map_err(|err| error!("esplora header was not utf-8 ({err})"))?
+        .trim();
+    if text.len() != 160 || !text.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(error!("esplora header was {} bytes", body.len()));
+    }
+    let mut raw = Vec::with_capacity(80);
+    let bytes = text.as_bytes();
+    for i in (0..160).step_by(2) {
+        let pair = std::str::from_utf8(&bytes[i..i + 2]).map_err(|err| error!("{err}"))?;
+        raw.push(u8::from_str_radix(pair, 16).map_err(|err| error!("{err}"))?);
+    }
+    Ok(raw)
+}
+
+fn reversed(bytes: &[u8]) -> Vec<u8> {
+    bytes.iter().rev().copied().collect()
+}
+
+fn esplora_header<S: folgore_common::stragegy::RecoveryStrategy>(
+    backend: &Esplora<S>,
+    hash: &str,
+) -> Result<serde_json::Value, PluginError> {
+    let body = backend.recovery_strategy.apply(|| {
+        backend
+            .client
+            .raw_call(&format!("/block/{hash}/header"))
+            .map_err(|err| error!("{err}"))
+    })?;
+    // mempool.space returns the 80-byte header as 160 hex characters.
+    let raw = header_bytes(&body)?;
+    let bits = u32::from_le_bytes(raw[72..76].try_into().map_err(|_| error!("bits"))?);
+    let info_raw = backend.recovery_strategy.apply(|| {
+        backend
+            .client
+            .raw_call(&format!("/block/{hash}"))
+            .map_err(|err| error!("{err}"))
+    })?;
+    let info: serde_json::Value =
+        serde_json::from_slice(&info_raw).unwrap_or(serde_json::json!({}));
+    Ok(serde_json::json!({
+        "hash": hash,
+        "height": info.get("height"),
+        "version": i32::from_le_bytes(raw[0..4].try_into().unwrap_or([0; 4])),
+        "previousblockhash": encode_hex(&reversed(&raw[4..36])),
+        "merkleroot": encode_hex(&reversed(&raw[36..68])),
+        "time": u32::from_le_bytes(raw[68..72].try_into().unwrap_or([0; 4])),
+        "bits": format!("{bits:08x}"),
+        "nonce": u32::from_le_bytes(raw[76..80].try_into().unwrap_or([0; 4])),
+        // Esplora has no cumulative chainwork. Lampo treats a missing or
+        // zero total as "use the header work", and adds the parent it
+        // already accepted. Inventing a total here fails that check.
+        "chainwork": "00".repeat(32),
+    }))
 }
