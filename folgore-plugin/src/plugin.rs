@@ -16,6 +16,7 @@ use folgore_common::cln::plugin::errors::PluginError;
 use folgore_common::cln::plugin::plugin::Plugin;
 use folgore_common::cln::plugin::types::LogLevel;
 
+use folgore_electrum::Electrum;
 use folgore_esplora::Esplora;
 use folgore_nakamoto::{Config, Nakamoto, Network};
 
@@ -31,6 +32,8 @@ pub struct PluginState {
     pub(crate) core_url: Option<String>,
     pub(crate) core_user: Option<String>,
     pub(crate) core_pass: Option<String>,
+    pub(crate) electrum_server: Option<String>,
+    pub(crate) mempool_space_url: Option<String>,
     pub(crate) _retry_strategy: Option<String>,
     /// CLN RPC path
     #[allow(dead_code)]
@@ -46,6 +49,8 @@ impl PluginState {
             core_url: None,
             core_pass: None,
             core_user: None,
+            electrum_server: None,
+            mempool_space_url: None,
             _retry_strategy: None,
             cln_rpc_path: None,
         }
@@ -83,6 +88,10 @@ impl PluginState {
                     TimeoutRetry::default().into(),
                     &rpc_path,
                 )?;
+                Ok(Arc::new(client))
+            }
+            BackendKind::Electrum => {
+                let client = Electrum::new(&conf.network, self.electrum_server.clone())?;
                 Ok(Arc::new(client))
             }
             BackendKind::BitcoinCore => {
@@ -133,8 +142,8 @@ pub fn build_plugin() -> Plugin<PluginState> {
         .add_opt(
             "bitcoin-client",
             "string",
-            Some("nakamoto".to_owned()),
-            "Set up the client to use",
+            Some("electrum".to_owned()),
+            "Chain backend: electrum (default), esplora, bitcoind, nakamoto",
             false,
         )
         .add_opt(
@@ -158,16 +167,45 @@ pub fn build_plugin() -> Plugin<PluginState> {
             "A custom esplora backend url where to fetch the bitcoin data",
             false,
         )
+        .add_opt(
+            "mempool-space-url",
+            "string",
+            None,
+            "Custom mempool.space instance. When set, the chain backend is esplora at this URL (phoenixd)",
+            false,
+        )
+        .add_opt(
+            "electrum-server",
+            "string",
+            None,
+            "Custom electrum server host:port. Default is a public server for the network",
+            false,
+        )
         .on_init(on_init)
 }
 
 // FIXME: on init should return an result where the error
 // is the reason of the disable
 fn on_init(plugin: &mut Plugin<PluginState>) -> Value {
-    let client: String = plugin
-        // if the client is not specified, set the esplora one as a default client
-        .get_opt("bitcoin-client")
-        .unwrap_or("esplora".to_owned());
+    if let Some(url) = plugin.get_opt::<String>("mempool-space-url") {
+        if !url.trim().is_empty() {
+            plugin.state.mempool_space_url = Some(url.trim().to_string());
+            // phoenixd: a mempool.space URL selects that backend over electrum.
+            plugin.state.esplora_url = Some(url.trim().trim_end_matches('/').to_string());
+        }
+    }
+    if let Some(server) = plugin.get_opt::<String>("electrum-server") {
+        if !server.trim().is_empty() {
+            plugin.state.electrum_server = Some(server.trim().to_string());
+        }
+    }
+    let client: String = if plugin.state.mempool_space_url.is_some() {
+        "esplora".to_owned()
+    } else {
+        plugin
+            .get_opt("bitcoin-client")
+            .unwrap_or("electrum".to_owned())
+    };
     if let Some(url) = plugin.get_opt::<String>("bitcoin-esplora-url") {
         if !url.trim().is_empty() {
             plugin.state.esplora_url = Some(url.trim().to_string());

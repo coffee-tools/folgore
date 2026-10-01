@@ -5,6 +5,8 @@ members = [
         "folgore-esplora",
         "folgore-plugin",
         "folgore-bitcoind",
+        "folgore-electrum",
+        "folgore-lampo-plugin",
 ]
 resolver = "2"
 
